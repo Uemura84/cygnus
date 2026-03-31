@@ -1,0 +1,129 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f8f9fa;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.subtitle {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #475569;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toggle:hover {
+  background: #f1f5f9;
+}
+
+.toggleActive {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.main {
+  flex: 1;
+  padding: 28px;
+  overflow-y: auto;
+}
+
+.cacheBanner {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  color: #92400e;
+  margin-bottom: 16px;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+}
+
+.footerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navBtn {
+  padding: 8px 20px;
+  border-radius: 7px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #475569;
+  transition: background 0.15s;
+}
+
+.navBtn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.navBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.runBtn {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.runBtn:hover:not(:disabled) {
+  background: #1d4ed8;
+}

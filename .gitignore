@@ -1,0 +1,52 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+ENV/
+pip-wheel-metadata/
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── Backend runtime artifacts ─────────────────────────────────────────────────
+cvm-demo-app/backend/cache/
+cvm-demo-app/backend/data/
+
+# ── Node / frontend ───────────────────────────────────────────────────────────
+node_modules/
+cvm-demo-app/frontend/node_modules/
+cvm-demo-app/frontend/dist/
+cvm-demo-app/frontend/.vite/
+
+# ── Editor / OS ───────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+
+# ── Jupyter (exploration notebooks) ──────────────────────────────────────────
+.ipynb_checkpoints/

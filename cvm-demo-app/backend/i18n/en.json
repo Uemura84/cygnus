@@ -1,0 +1,52 @@
+{
+  "step1": {
+    "running": "Downloading data from CVM portal...",
+    "complete": "Download complete",
+    "error": "Download failed"
+  },
+  "step2": {
+    "running": "Applying filters...",
+    "complete": "Data preparation complete",
+    "error": "Preparation failed"
+  },
+  "step3": {
+    "running": "Transforming DRE data...",
+    "complete": "Transformation complete",
+    "error": "Transformation failed"
+  },
+  "step4": {
+    "running": "Computing EBITDA drivers...",
+    "complete": "Metrics computed",
+    "error": "Metric computation failed"
+  },
+  "step5": {
+    "running": "Scanning data quality...",
+    "complete": "Quality scan complete",
+    "error": "Quality scan failed"
+  },
+  "step6": {
+    "running": "Detecting patterns and scoring risk...",
+    "complete": "Pattern detection & risk assessment complete",
+    "error": "Pattern detection failed"
+  },
+  "step7": {
+    "running": "Generating hypotheses...",
+    "complete": "Hypothesis generation complete",
+    "error": "Hypothesis generation failed"
+  },
+  "step8": {
+    "running": "Building executive summary...",
+    "complete": "Executive summary complete",
+    "error": "Summary generation failed"
+  },
+  "step9": {
+    "running": "Streaming AI analysis...",
+    "complete": "AI analysis complete",
+    "error": "AI stream failed"
+  },
+  "cache": {
+    "using_cache": "Using cached data",
+    "fallback": "Live step failed; using cache",
+    "no_cache": "No cache available for this step"
+  }
+}

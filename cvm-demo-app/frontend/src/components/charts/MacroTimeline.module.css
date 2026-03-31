@@ -1,0 +1,44 @@
+.container {
+  position: relative;
+  width: 100%;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.tooltip {
+  position: absolute;
+  background: #1e293b;
+  color: #f1f5f9;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  max-width: 280px;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  line-height: 1.45;
+}
+
+.tooltipPeriod {
+  font-weight: 700;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+  color: #e2e8f0;
+}
+
+.tooltipText {
+  color: #cbd5e1;
+  font-size: 0.76rem;
+}
+
+.tooltipMacro {
+  color: #94a3b8;
+  font-size: 0.74rem;
+  margin-top: 4px;
+  font-style: italic;
+}

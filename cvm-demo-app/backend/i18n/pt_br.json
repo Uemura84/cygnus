@@ -1,0 +1,52 @@
+{
+  "step1": {
+    "running": "Baixando dados do portal CVM...",
+    "complete": "Download concluído",
+    "error": "Falha no download"
+  },
+  "step2": {
+    "running": "Aplicando filtros...",
+    "complete": "Preparação dos dados concluída",
+    "error": "Falha na preparação"
+  },
+  "step3": {
+    "running": "Transformando dados da DRE...",
+    "complete": "Transformação concluída",
+    "error": "Falha na transformação"
+  },
+  "step4": {
+    "running": "Calculando drivers de EBITDA...",
+    "complete": "Métricas calculadas",
+    "error": "Falha no cálculo de métricas"
+  },
+  "step5": {
+    "running": "Verificando qualidade dos dados...",
+    "complete": "Verificação de qualidade concluída",
+    "error": "Falha na verificação de qualidade"
+  },
+  "step6": {
+    "running": "Detectando padrões e avaliando risco...",
+    "complete": "Detecção de padrões e avaliação de risco concluídas",
+    "error": "Falha na detecção de padrões"
+  },
+  "step7": {
+    "running": "Gerando hipóteses...",
+    "complete": "Geração de hipóteses concluída",
+    "error": "Falha na geração de hipóteses"
+  },
+  "step8": {
+    "running": "Construindo sumário executivo...",
+    "complete": "Sumário executivo concluído",
+    "error": "Falha na geração do sumário"
+  },
+  "step9": {
+    "running": "Transmitindo análise de IA...",
+    "complete": "Análise de IA concluída",
+    "error": "Falha na transmissão da IA"
+  },
+  "cache": {
+    "using_cache": "Usando dados em cache",
+    "fallback": "Etapa ao vivo falhou; usando cache",
+    "no_cache": "Cache não disponível para esta etapa"
+  }
+}
