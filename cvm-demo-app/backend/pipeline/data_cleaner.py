@@ -108,7 +108,10 @@ def prepare(company_name: str, data_dir: Path, years: list[int]) -> dict:
             "after_holding_exclusion": 0,
             "filters_applied": [],
             "source": "live",
-            "error": f"No data found for {company_name}",
+            "error": (
+                f"No data found for '{company_name}'. "
+                "Verify the company name matches DENOM_CIA exactly, or run Step 1 first."
+            ),
         }
 
     raw_df = pd.concat(all_frames, ignore_index=True)
@@ -152,6 +155,30 @@ def prepare(company_name: str, data_dir: Path, years: list[int]) -> dict:
 
     after_holding = len(holding_df)
     removed_holding = after_ordem - after_holding
+
+    # ------------------------------------------------------------------ #
+    # Financial institution detection                                     #
+    # Banks / insurers don't report COGS (CD_CONTA 3.02). Detect this   #
+    # and return a clear error rather than letting downstream steps fail. #
+    # ------------------------------------------------------------------ #
+    if "CD_CONTA" in holding_df.columns and "VL_CONTA" in holding_df.columns:
+        cogs_rows = holding_df[holding_df["CD_CONTA"].astype(str).str.startswith("3.02")]
+        cogs_numeric = pd.to_numeric(cogs_rows["VL_CONTA"], errors="coerce")
+        if cogs_rows.empty or cogs_numeric.abs().sum() == 0:
+            return {
+                "raw_rows": raw_rows,
+                "after_dre_filter": after_dre,
+                "after_ordem_exerc": after_ordem,
+                "after_holding_exclusion": after_holding,
+                "filters_applied": [],
+                "source": "live",
+                "error": (
+                    f"'{company_name}' appears to be a financial institution. "
+                    "This analysis is designed for industrial and commercial companies "
+                    "with COGS-based income statements (CD_CONTA 3.02). "
+                    "Financial institution analysis will be available in a future version."
+                ),
+            }
 
     # ------------------------------------------------------------------ #
     # Save filtered DRE for downstream steps (Step 3 reads this)         #

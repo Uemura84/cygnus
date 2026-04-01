@@ -17,7 +17,7 @@ def run(config, pipeline_state: dict) -> dict:
 
     # --- Cache read path ---
     if config.cache_mode:
-        cached = load_cache(STEP, CACHE_DIR)
+        cached = load_cache(STEP, CACHE_DIR, company_name=config.company_name)
         if cached:
             return cached
         # Cache not populated yet — fall through to live
@@ -34,12 +34,12 @@ def run(config, pipeline_state: dict) -> dict:
             "data": data,
             "metadata": {"cache_used": False, "source": "live"},
         }
-        save_cache(STEP, result, CACHE_DIR)
+        save_cache(STEP, result, CACHE_DIR, company_name=config.company_name)
         return result
 
     except Exception as exc:
         # Live failed — try cache as fallback
-        cached = load_cache(STEP, CACHE_DIR)
+        cached = load_cache(STEP, CACHE_DIR, company_name=config.company_name)
         if cached:
             cached["metadata"]["source"] = "cache"
             cached["metadata"]["reason"] = str(exc)

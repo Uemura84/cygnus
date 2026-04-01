@@ -1,0 +1,158 @@
+.wrapper {
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #1e293b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  white-space: nowrap;
+}
+
+.trigger:hover {
+  border-color: #2563eb;
+}
+
+.triggerIcon {
+  font-size: 0.8rem;
+}
+
+.triggerName {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.triggerArrow {
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  width: 340px;
+  max-width: 90vw;
+  overflow: hidden;
+}
+
+.searchInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.875rem;
+  outline: none;
+  color: #1e293b;
+  font-family: inherit;
+}
+
+.searchInput::placeholder {
+  color: #94a3b8;
+}
+
+.resultList {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.hint {
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.resultItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.1s;
+}
+
+.resultItem:hover {
+  background: #f8fafc;
+}
+
+.resultItemActive {
+  background: #eff6ff;
+}
+
+.resultName {
+  font-size: 0.82rem;
+  color: #1e293b;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sectorBadge {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  white-space: nowrap;
+}
+
+.sectorBadgeAi {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  max-width: 480px;
+  text-align: center;
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

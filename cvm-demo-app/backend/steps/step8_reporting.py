@@ -279,7 +279,7 @@ def run(config, pipeline_state: dict) -> dict:
     STEP = 8
 
     if config.cache_mode:
-        cached = load_cache(STEP, CACHE_DIR)
+        cached = load_cache(STEP, CACHE_DIR, company_name=config.company_name)
         if cached:
             return cached
 
@@ -290,7 +290,7 @@ def run(config, pipeline_state: dict) -> dict:
             "data": step8_state,
             "metadata": {"cache_used": False, "source": "websocket"},
         }
-        save_cache(STEP, result, CACHE_DIR)
+        save_cache(STEP, result, CACHE_DIR, company_name=config.company_name)
         return result
 
     return {

@@ -1,7 +1,7 @@
 {
   "header": {
     "title": "CVM Financial Analysis",
-    "subtitle": "Braskem S.A. — Public Data Pipeline",
+    "subtitle": "{company} — Public Data Pipeline",
     "lang_toggle": "PT-BR",
     "cache_toggle_live": "Live",
     "cache_toggle_cache": "Cache"
@@ -220,5 +220,14 @@
   "error": {
     "step_failed": "Step failed",
     "connection_error": "Connection error"
+  },
+  "company_selector": {
+    "search_placeholder": "Search company...",
+    "current_company": "Current company",
+    "change_company": "Change company",
+    "sector_detected_by_ai": "Sector will be detected by AI",
+    "company_changed": "Company changed to {company}. Run the pipeline from Step 1.",
+    "no_results": "No companies found",
+    "loading": "Loading companies..."
   }
 }

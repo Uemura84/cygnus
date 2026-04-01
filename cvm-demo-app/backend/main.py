@@ -1,12 +1,13 @@
 import asyncio
 import json
 import time
+import unicodedata
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import app_config, pipeline_state
+from config import app_config, pipeline_state, CACHE_DIR, DATA_DIR
 from steps import (
     step1_download,
     step2_preparation,
@@ -61,8 +62,90 @@ def set_config(body: dict):
         app_config.language = body["language"]
     if "cache_mode" in body:
         app_config.cache_mode = body["cache_mode"]
-    # company_name / company_cvm_code intentionally not changeable in Phase 1
+    if "company_name" in body and body["company_name"] != app_config.company_name:
+        app_config.company_name = body["company_name"]
+        # Reset pipeline state so previous company's data doesn't bleed through
+        for key in list(pipeline_state.keys()):
+            pipeline_state[key] = None
     return get_config()
+
+
+# ---------------------------------------------------------------------------
+# Company lookup endpoints
+# ---------------------------------------------------------------------------
+
+def _normalize_for_search(s: str) -> str:
+    """Strip accents and uppercase for case/accent-insensitive matching."""
+    return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").upper()
+
+
+def _load_all_companies() -> list[dict]:
+    """Return the full company list, from cache or from downloaded DFP ZIPs."""
+    companies_cache = CACHE_DIR / "companies.json"
+    if companies_cache.exists():
+        try:
+            with open(companies_cache, encoding="utf-8") as f:
+                cached = json.load(f)
+            if isinstance(cached.get("companies"), list):
+                return cached["companies"]
+        except Exception:
+            pass
+
+    from pipeline.cvm_downloader import extract_company_list
+    from pipeline.enrichment import SECTOR_MAP
+
+    raw = extract_company_list(DATA_DIR)
+    companies = []
+    for c in raw:
+        key = c["name"].split()[0].upper()
+        sector = SECTOR_MAP.get(key, "Unknown")
+        source = "mapped" if sector != "Unknown" else "unmapped"
+        companies.append({**c, "sector": sector, "sector_source": source})
+
+    result = {
+        "companies": companies,
+        "total": len(companies),
+        "mapped_sectors": sum(1 for c in companies if c["sector_source"] == "mapped"),
+        "unmapped": sum(1 for c in companies if c["sector_source"] == "unmapped"),
+    }
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        with open(companies_cache, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False)
+    except Exception:
+        pass
+    return companies
+
+
+@app.get("/api/companies")
+def get_companies():
+    companies = _load_all_companies()
+    from pipeline.enrichment import SECTOR_MAP
+    return {
+        "companies": companies,
+        "total": len(companies),
+        "mapped_sectors": sum(1 for c in companies if c.get("sector_source") == "mapped"),
+        "unmapped": sum(1 for c in companies if c.get("sector_source") == "unmapped"),
+    }
+
+
+@app.get("/api/companies/search")
+def search_companies(q: str = Query(default="")):
+    if not q.strip():
+        return {"results": []}
+    companies = _load_all_companies()
+    q_norm = _normalize_for_search(q.strip())
+    matches = [c for c in companies if q_norm in _normalize_for_search(c["name"])]
+    # Score: full-word match ranks higher than substring
+    def score(c):
+        name_norm = _normalize_for_search(c["name"])
+        if name_norm.startswith(q_norm):
+            return 1.0
+        if q_norm in name_norm.split():
+            return 0.9
+        return 0.5
+    matches.sort(key=score, reverse=True)
+    return {"results": [{**m, "score": score(m)} for m in matches[:10]]}
 
 
 # ---------------------------------------------------------------------------

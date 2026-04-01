@@ -1,7 +1,7 @@
 {
   "header": {
     "title": "Análise Financeira CVM",
-    "subtitle": "Braskem S.A. — Pipeline de Dados Públicos",
+    "subtitle": "{company} — Pipeline de Dados Públicos",
     "lang_toggle": "EN",
     "cache_toggle_live": "Ao Vivo",
     "cache_toggle_cache": "Cache"
@@ -220,5 +220,14 @@
   "error": {
     "step_failed": "Etapa falhou",
     "connection_error": "Erro de conexão"
+  },
+  "company_selector": {
+    "search_placeholder": "Buscar empresa...",
+    "current_company": "Empresa atual",
+    "change_company": "Trocar empresa",
+    "sector_detected_by_ai": "Setor será detectado por IA",
+    "company_changed": "Empresa alterada para {company}. Execute o pipeline a partir do Passo 1.",
+    "no_results": "Nenhuma empresa encontrada",
+    "loading": "Carregando empresas..."
   }
 }

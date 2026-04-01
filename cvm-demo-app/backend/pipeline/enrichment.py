@@ -16,12 +16,56 @@ import pandas as pd
 # Sector map for peer comparison — only companies in the same sector are compared.
 # Keys are uppercase name fragments matching DENOM_CIA values.
 SECTOR_MAP = {
-    "BRASKEM":   "Petrochemical",
-    "UNIPAR":    "Petrochemical",
-    "ELEKEIROZ": "Petrochemical",
-    "SUZANO":    "Pulp & Paper",
-    "GERDAU":    "Steel",
-    "VALE":      "Mining",
+    # Petrochemical
+    "BRASKEM":        "Petrochemical",
+    "UNIPAR":         "Petrochemical",
+    "ELEKEIROZ":      "Petrochemical",
+    # Pulp & Paper
+    "SUZANO":         "Pulp & Paper",
+    "KLABIN":         "Pulp & Paper",
+    # Steel
+    "GERDAU":         "Steel",
+    "USIMINAS":       "Steel",
+    "CSN":            "Steel",
+    # Mining
+    "VALE":           "Mining",
+    # Oil & Gas
+    "PETROLEO":       "Oil & Gas",   # PETRÓLEO BRASILEIRO S.A. - PETROBRAS
+    "PETROBRAS":      "Oil & Gas",
+    "PRIO":           "Oil & Gas",
+    "3R":             "Oil & Gas",
+    # Food & Beverage
+    "AMBEV":          "Food & Beverage",
+    "JBS":            "Food & Beverage",
+    "BRF":            "Food & Beverage",
+    "MARFRIG":        "Food & Beverage",
+    # Retail
+    "MAGAZINE":       "Retail",      # MAGAZINE LUIZA S.A.
+    "LOJAS":          "Retail",      # LOJAS RENNER S.A.
+    "VIA":            "Retail",
+    # Utilities
+    "ELETROBRAS":     "Utilities",
+    "ENERGISA":       "Utilities",
+    "EQUATORIAL":     "Utilities",
+    "ENGIE":          "Utilities",
+    "CPFL":           "Utilities",
+    "COPEL":          "Utilities",
+    # Telecommunications
+    "TELEFONICA":     "Telecommunications",
+    "TIM":            "Telecommunications",
+    # Banking
+    "ITAU":           "Banking",
+    "BRADESCO":       "Banking",
+    "BANCO":          "Banking",     # BANCO DO BRASIL S.A.
+    "SANTANDER":      "Banking",
+    # Construction / Real Estate
+    "MRV":            "Construction",
+    "CYRELA":         "Construction",
+    # Transportation
+    "LOCALIZA":       "Transportation",
+    "RUMO":           "Transportation",
+    "AZUL":           "Airlines",
+    "GOL":            "Airlines",
 }
 
 

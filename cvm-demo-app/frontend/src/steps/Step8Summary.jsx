@@ -76,7 +76,7 @@ export default function Step8Summary({ stepState, data }) {
       step: 8,
       step6_data: step6Data,
       step7_response: step7Data?.response_text ?? '',
-      company_name: 'BRASKEM S.A.',
+      company_name: appState.companyName ?? 'BRASKEM S.A.',
       language: appState.language ?? 'en',
     })
   }

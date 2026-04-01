@@ -96,6 +96,49 @@ def _count_dre_rows_in_zip(
     return count, dates
 
 
+def extract_company_list(data_dir: Path) -> list[dict]:
+    """Scan downloaded DFP ZIPs and return unique companies with CVM codes.
+
+    Only reads the raw ZIPs already on disk — does not make network requests.
+    Returns a list sorted by company name.
+    """
+    companies: dict[str, dict] = {}
+    raw_dir = data_dir / "raw"
+    if not raw_dir.exists():
+        return []
+
+    for zip_path in sorted(raw_dir.glob("dfp_cia_aberta_*.zip")):
+        try:
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                csv_files = [
+                    name for name in zf.namelist()
+                    if "dre_con" in name.lower() and name.endswith(".csv")
+                ]
+                for csv_file in csv_files:
+                    try:
+                        with zf.open(csv_file) as f:
+                            df = pd.read_csv(
+                                f,
+                                sep=";",
+                                encoding="latin-1",
+                                low_memory=False,
+                                usecols=["DENOM_CIA", "CD_CVM"],
+                            )
+                        for _, row in df.drop_duplicates(subset=["DENOM_CIA"]).iterrows():
+                            name = str(row["DENOM_CIA"]).strip()
+                            if name and name not in companies:
+                                companies[name] = {
+                                    "name": name,
+                                    "cvm_code": str(int(row["CD_CVM"])) if pd.notna(row["CD_CVM"]) else "",
+                                }
+                    except Exception:
+                        continue
+        except (zipfile.BadZipFile, FileNotFoundError):
+            continue
+
+    return sorted(companies.values(), key=lambda c: c["name"])
+
+
 def download(company_name: str, years: list[int], data_dir: Path) -> dict:
     """Download DFP and ITR ZIPs for *company_name* across *years*.
 

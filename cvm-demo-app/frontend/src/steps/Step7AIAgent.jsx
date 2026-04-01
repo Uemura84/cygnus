@@ -81,7 +81,7 @@ export default function Step7AIAgent({ stepState, data }) {
       risk_score: step6Data.risk_score ?? 0,
       risk_level: step6Data.risk_level ?? 'UNKNOWN',
       finding_categories: step6Data.finding_categories ?? {},
-      company_name: 'BRASKEM S.A.',
+      company_name: appState.companyName ?? 'BRASKEM S.A.',
       date_range: '2020–2025',
       language: appState.language ?? 'en',
     })

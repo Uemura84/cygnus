@@ -1,4 +1,4 @@
-import { useReducer, createContext, useContext } from 'react'
+import { useReducer, createContext, useContext, useEffect } from 'react'
 import StepWizard from './components/StepWizard'
 import en from './i18n/en.json'
 import ptBr from './i18n/pt-br.json'
@@ -17,14 +17,17 @@ export function useI18n() {
 // ---------------------------------------------------------------------------
 const TOTAL_STEPS = 9
 
+const PENDING_STEPS = Object.fromEntries(
+  Array.from({ length: TOTAL_STEPS }, (_, i) => [i + 1, 'pending'])
+)
+
 const initialState = {
   currentStep: 1,
-  stepStates: Object.fromEntries(
-    Array.from({ length: TOTAL_STEPS }, (_, i) => [i + 1, 'pending'])
-  ),
+  stepStates: { ...PENDING_STEPS },
   stepData: {},
   language: 'en',
   cacheMode: false,
+  companyName: 'BRASKEM S.A.',
 }
 
 function appReducer(state, action) {
@@ -51,6 +54,15 @@ function appReducer(state, action) {
       return { ...state, language: state.language === 'en' ? 'pt-br' : 'en' }
     case 'TOGGLE_CACHE':
       return { ...state, cacheMode: !state.cacheMode }
+    case 'SET_COMPANY':
+      return { ...state, companyName: action.companyName }
+    case 'RESET_PIPELINE':
+      return {
+        ...state,
+        currentStep: 1,
+        stepStates: { ...PENDING_STEPS },
+        stepData: {},
+      }
     default:
       return state
   }
@@ -72,6 +84,18 @@ export function useAppDispatch() {
 // ---------------------------------------------------------------------------
 export default function App() {
   const [state, dispatch] = useReducer(appReducer, initialState)
+
+  // Sync company name from backend config on mount
+  useEffect(() => {
+    fetch('/api/config')
+      .then((r) => r.json())
+      .then((cfg) => {
+        if (cfg.company_name && cfg.company_name !== state.companyName) {
+          dispatch({ type: 'SET_COMPANY', companyName: cfg.company_name })
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const strings = state.language === 'en' ? en : ptBr
 

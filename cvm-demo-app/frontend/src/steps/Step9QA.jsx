@@ -56,7 +56,7 @@ export default function Step9QA({ stepState, data }) {
         message: message.trim(),
         conversation_history: conversation,  // history before this message
         language: appState.language ?? 'en',
-        company_name: 'BRASKEM S.A.',
+        company_name: appState.companyName ?? 'BRASKEM S.A.',
       }))
     }
 

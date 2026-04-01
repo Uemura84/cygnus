@@ -2,6 +2,7 @@ import { useI18n, useAppState, useAppDispatch } from '../App'
 import StepSidebar from './StepSidebar'
 import StepContent from './StepContent'
 import LanguageToggle from './LanguageToggle'
+import CompanySelector from './CompanySelector'
 import styles from './StepWizard.module.css'
 
 export default function StepWizard() {
@@ -24,9 +25,12 @@ export default function StepWizard() {
       <header className={styles.header}>
         <div className={styles.headerLeft}>
           <span className={styles.title}>{t.header.title}</span>
-          <span className={styles.subtitle}>{t.header.subtitle}</span>
+          <span className={styles.subtitle}>
+            {t.header.subtitle.replace('{company}', state.companyName ?? 'BRASKEM S.A.')}
+          </span>
         </div>
         <div className={styles.headerRight}>
+          <CompanySelector />
           <LanguageToggle />
           <button
             className={`${styles.toggle} ${state.cacheMode ? styles.toggleActive : ''}`}
