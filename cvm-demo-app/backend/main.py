@@ -14,7 +14,7 @@ from steps import (
     step4_ebitda_drivers,
     step5_quality_scan,
     step6_core_analysis,
-    step7_hypotheses,
+    step7_ai_agent,
     step8_reporting,
     step9_llm_analysis,
 )
@@ -36,7 +36,7 @@ STEP_HANDLERS = {
     4: step4_ebitda_drivers.run,
     5: step5_quality_scan.run,
     6: step6_core_analysis.run,
-    7: step7_hypotheses.run,
+    7: step7_ai_agent.run,
     8: step8_reporting.run,
 }
 
@@ -97,8 +97,29 @@ async def llm_stream(websocket: WebSocket):
     await websocket.accept()
     try:
         payload = await websocket.receive_json()
-        async for token in step9_llm_analysis.stream(payload, config=app_config):
-            await websocket.send_text(token)
+        step = payload.get("step", 9)
+
+        if step == 7:
+            # Industry Specialist Agent — stream and store full response in pipeline_state
+            full_text = ""
+            async for token in step7_ai_agent.stream(payload, config=app_config):
+                await websocket.send_text(token)
+                full_text += token
+            pipeline_state["step7"] = {"response_text": full_text}
+        elif step == 8:
+            # Executive Summary — merges Step 6 data and Step 7 analysis
+            full_text = ""
+            async for token in step8_reporting.stream(payload, config=app_config):
+                await websocket.send_text(token)
+                full_text += token
+            pipeline_state["step8"] = {"response_text": full_text}
+        else:
+            # Step 9 Q&A — conversational streaming with pipeline context
+            async for token in step9_llm_analysis.stream(
+                payload, config=app_config, pipeline_state=pipeline_state
+            ):
+                await websocket.send_text(token)
+
         await websocket.send_text("[DONE]")
     except WebSocketDisconnect:
         pass

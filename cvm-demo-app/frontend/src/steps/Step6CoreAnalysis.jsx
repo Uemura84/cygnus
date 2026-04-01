@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useI18n, useAppState } from '../App'
 import FindingChart from '../components/charts/FindingChart'
-import MacroTimeline from '../components/charts/MacroTimeline'
 import RiskGauge from '../components/charts/RiskGauge'
 import styles from './Step.module.css'
 
@@ -157,17 +156,6 @@ export default function Step6CoreAnalysis({ stepState, data }) {
             })}
           </div>
 
-          {/* Macro timeline */}
-          {d.macro_timeline?.length > 0 && (
-            <div className={styles.section}>
-              <h3 className={styles.sectionTitle}>{t.step6.timeline_title}</h3>
-              <MacroTimeline
-                macroTimeline={d.macro_timeline}
-                findings={d.findings ?? []}
-                findingCategories={d.finding_categories ?? {}}
-              />
-            </div>
-          )}
         </div>
       )}
     </div>

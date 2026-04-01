@@ -125,7 +125,7 @@
   },
   "step6": {
     "title": "Detecção de Padrões e Avaliação de Risco",
-    "description": "Executa 6 algoritmos de detecção, constrói sinais compostos e pontua o risco da empresa.",
+    "description": "Executa 6 algoritmos de detecção, constrói sinais compostos e pontua risco usando apenas dados da CVM",
     "running_message": "Detectando padrões...",
     "algorithms_run": "Algoritmos Executados",
     "raw_findings": "Achados Brutos",
@@ -143,21 +143,12 @@
     "timeline_title": "Achados vs. Eventos Macro"
   },
   "step7": {
-    "title": "Geração de Hipóteses",
-    "description": "Gerando teorias para achados estruturais e mapeando para fontes de dados internas.",
-    "running_message": "Gerando hipóteses...",
-    "primary_finding": "Achado Principal",
-    "hypotheses": "Teorias Possíveis",
-    "data_readiness": "Gap de Prontidão de Dados",
-    "data_needed": "Dados Necessários",
-    "data_availability": "Disponibilidade",
-    "internal_only": "Apenas Interno",
-    "partially_available": "Parcialmente Disponível",
-    "confidence": "Confiança",
-    "supporting_findings": "Suportado por",
-    "show_mechanism": "▼ Mostrar mecanismo",
-    "hide_mechanism": "▲ Ocultar mecanismo",
-    "source_note": "Hipóteses geradas a partir de mapa de conhecimento setorial"
+    "title": "Especialista Setorial IA",
+    "description": "Análise com IA incluindo contexto setorial e macroeconômico",
+    "running": "Consultando Especialista Setorial IA...",
+    "run_button": "Consultar Agente IA",
+    "ai_disclaimer": "Esta análise foi gerada por IA. Revisão por especialista de domínio é recomendada.",
+    "error_no_key": "ANTHROPIC_API_KEY não configurada. Configure a chave da API para habilitar a análise com IA."
   },
   "step8": {
     "title": "Sumário Executivo",
@@ -175,20 +166,22 @@
     "finding_evidence": "Evidência",
     "finding_category": "Categoria",
     "data_limitations": "Limitações dos Dados",
-    "transition_label": "Próximo Passo"
+    "transition_label": "Próximo Passo",
+    "run_button": "Gerar Sumário",
+    "running": "Gerando sumário executivo...",
+    "ai_disclaimer": "Este sumário foi gerado por IA. Revisão por especialista de domínio é recomendada."
   },
   "step9": {
-    "title": "Análise Aprofundada com IA",
-    "description": "Análise com IA de achados individuais, informada pelo contexto de hipóteses da Etapa 7.",
-    "running_message": "Conectando à API Claude...",
-    "select_finding": "Selecione um achado para analisar",
-    "stream_title": "Análise do Claude",
-    "stream_placeholder": "A resposta do Claude aparecerá aqui...",
-    "analyzing": "Analisar",
-    "finding_card_title": "Detalhe do Achado",
-    "hypothesis_context": "Análise de IA informada por {count} hipóteses estruturadas da Etapa 7",
-    "no_hypothesis_context": "Análise de IA sem contexto de hipóteses (execute a Etapa 7 primeiro)",
-    "expert_cue": "Interpretação do especialista de domínio a seguir..."
+    "title": "Pergunte ao Especialista",
+    "description": "Conversa aberta com o Especialista Setorial IA",
+    "input_placeholder": "Pergunte qualquer coisa sobre a análise...",
+    "suggested_q1": "Quais eventos macro explicam a inflexão do CPV em 2022?",
+    "suggested_q2": "Quais são as causas mais prováveis da deterioração do CPV?",
+    "suggested_q3": "Quais dados internos seriam necessários para confirmar a principal hipótese?",
+    "suggested_q4": "Como a estrutura de custos se compara com pares globais?",
+    "suggested_q5": "Como seria um cenário de recuperação?",
+    "new_conversation": "Nova conversa",
+    "ai_context_note": "IA tem contexto dos Passos 6 e 7"
   },
   "chart": {
     "period_label": "Período",

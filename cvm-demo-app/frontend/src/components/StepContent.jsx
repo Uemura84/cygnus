@@ -5,9 +5,9 @@ import Step3Transformation from '../steps/Step3Transformation'
 import Step4EBITDADrivers from '../steps/Step4EBITDADrivers'
 import Step5QualityScan from '../steps/Step5QualityScan'
 import Step6CoreAnalysis from '../steps/Step6CoreAnalysis'
-import Step7Hypotheses from '../steps/Step7Hypotheses'
+import Step7AIAgent from '../steps/Step7AIAgent'
 import Step8Summary from '../steps/Step8Summary'
-import Step9LLMAnalysis from '../steps/Step9LLMAnalysis'
+import Step9QA from '../steps/Step9QA'
 
 const STEP_COMPONENTS = {
   1: Step1Download,
@@ -16,9 +16,9 @@ const STEP_COMPONENTS = {
   4: Step4EBITDADrivers,
   5: Step5QualityScan,
   6: Step6CoreAnalysis,
-  7: Step7Hypotheses,
+  7: Step7AIAgent,
   8: Step8Summary,
-  9: Step9LLMAnalysis,
+  9: Step9QA,
 }
 
 export default function StepContent() {

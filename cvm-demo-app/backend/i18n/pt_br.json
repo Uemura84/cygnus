@@ -30,9 +30,9 @@
     "error": "Falha na detecção de padrões"
   },
   "step7": {
-    "running": "Gerando hipóteses...",
-    "complete": "Geração de hipóteses concluída",
-    "error": "Falha na geração de hipóteses"
+    "running": "Consultando Especialista Setorial IA...",
+    "complete": "Análise de IA concluída",
+    "error": "Falha na transmissão da IA"
   },
   "step8": {
     "running": "Construindo sumário executivo...",

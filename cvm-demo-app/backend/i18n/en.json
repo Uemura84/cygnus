@@ -30,9 +30,9 @@
     "error": "Pattern detection failed"
   },
   "step7": {
-    "running": "Generating hypotheses...",
-    "complete": "Hypothesis generation complete",
-    "error": "Hypothesis generation failed"
+    "running": "Consulting AI Industry Specialist...",
+    "complete": "AI analysis complete",
+    "error": "AI stream failed"
   },
   "step8": {
     "running": "Building executive summary...",

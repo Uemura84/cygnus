@@ -33,7 +33,7 @@ def _load_enriched_df(company_name: str, data_dir) -> pd.DataFrame:
 def _shape_findings(findings: list) -> list:
     shaped = []
     base_keys = {"company", "metric", "pattern", "severity", "confidence_score",
-                 "anomaly_type", "confidence_reason", "insight", "macro_context"}
+                 "anomaly_type", "confidence_reason", "insight"}
     for i, f in enumerate(findings, start=1):
         record = {
             "id":           f"F{i:03d}",
@@ -45,7 +45,6 @@ def _shape_findings(findings: list) -> list:
             "anomaly_type": f.get("anomaly_type", ""),
             "description":  f.get("insight", ""),
             "period":       f.get("period", ""),
-            "macro_context": f.get("macro_context", ""),
             "data_points":  {k: v for k, v in f.items() if k not in base_keys},
         }
         shaped.append(record)
@@ -136,16 +135,6 @@ def run(config, pipeline_state: dict) -> dict:
         # Re-categorize now that we have composite signals
         finding_categories = categorize_findings(findings, enriched["composite_signals"])
 
-        macro_timeline = [
-            {
-                "period": entry["period"],
-                "year":   int(entry["period"].split("-")[0]),
-                "half":   entry["period"].split("-")[1],
-                "event":  entry["event"],
-            }
-            for entry in enriched["macro_timeline"]
-        ]
-
         result = {
             "status": "complete",
             "data": {
@@ -157,17 +146,15 @@ def run(config, pipeline_state: dict) -> dict:
                     "statistical_anomaly",
                     "yoy_quarter_comparison",
                 ],
-                "raw_findings":          len(findings),
-                "findings":              shaped,
-                "finding_categories":    finding_categories,
-                "composite_signals":     enriched["composite_signals"],
-                "risk_score":            enriched["risk_score"],
-                "risk_level":            enriched["risk_level"],
-                "risk_scores":           enriched["risk_scores"],
-                "macro_timeline":        macro_timeline,
-                "findings_enriched":     enriched["findings_enriched"],
-                "macro_annotations_added": enriched["macro_annotations_added"],
-                "source":                "live",
+                "raw_findings":       len(findings),
+                "findings":           shaped,
+                "finding_categories": finding_categories,
+                "composite_signals":  enriched["composite_signals"],
+                "risk_score":         enriched["risk_score"],
+                "risk_level":         enriched["risk_level"],
+                "risk_scores":        enriched["risk_scores"],
+                "findings_enriched":  enriched["findings_enriched"],
+                "source":             "live",
             },
             "metadata": {"cache_used": False, "source": "live"},
         }

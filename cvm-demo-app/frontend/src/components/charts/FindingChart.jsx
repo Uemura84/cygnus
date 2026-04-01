@@ -40,7 +40,6 @@ export default function FindingChart({ finding, timeSeries }) {
 // ---------------------------------------------------------------------------
 function CostDriftChart({ timeSeries, dp, tc }) {
   const hasAvgs = dp.first_half_avg != null && dp.second_half_avg != null
-  const period2021 = timeSeries.find(r => r.period?.startsWith('2021'))?.period
   const period2022 = timeSeries.find(r => r.period?.startsWith('2022'))?.period
   const lastPeriod  = timeSeries[timeSeries.length - 1]?.period
 
@@ -79,14 +78,6 @@ function CostDriftChart({ timeSeries, dp, tc }) {
               label={{ value: `${tc.second_half_avg ?? '2nd half avg'}: ${dp.second_half_avg?.toFixed(1)}%`, position: 'insideTopRight', fontSize: 10, fill: '#dc2626' }}
             />
           </>
-        )}
-
-        {/* 2021 commodity supercycle annotation */}
-        {period2021 && (
-          <ReferenceLine
-            x={period2021} stroke="#f59e0b" strokeDasharray="4 3" strokeWidth={1}
-            label={{ value: tc.commodity_supercycle ?? 'Commodity supercycle', position: 'insideTopRight', fontSize: 9, fill: '#78716c', fontStyle: 'italic' }}
-          />
         )}
 
         <Line type="monotone" dataKey="COGS_pct_Revenue" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />

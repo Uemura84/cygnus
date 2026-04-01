@@ -713,52 +713,6 @@ def _dedup_yoy_vs_anomalies(all_findings: list) -> list:
     return result
 
 
-# Macro context lookup — maps year-halves to key economic events.
-MACRO_CONTEXT = {
-    "2020-H1": "COVID-19 demand collapse — industrial output down globally",
-    "2020-H2": "COVID recovery — fiscal stimulus, demand rebound in China",
-    "2021-H1": "Post-COVID demand surge — commodity supercycle begins",
-    "2021-H2": "Commodity supercycle peak — naphtha/ethylene at multi-year highs",
-    "2022-H1": "Ukraine war — energy spike, Brent >$100/bbl; naphtha cost surge",
-    "2022-H2": "Global tightening cycle — Fed raises 400bps, demand destruction begins",
-    "2023-H1": "Post-war normalization — petrochemical margins under China oversupply pressure",
-    "2023-H2": "China restart — polyethylene/PVC export pressure intensifies",
-    "2024-H1": "Fiscal uncertainty — BRL weakness adds import cost pressure",
-    "2024-H2": "Commodity cycle trough — petrochemical spreads at cycle lows",
-    "2025-H1": "Potential recovery — monitor spread recovery and demand rebound signals",
-}
-
-
-def _get_macro_context(period_str: str) -> str:
-    """Return macro context for a period string ('Q3 2022' or '2022-09-30')."""
-    try:
-        if period_str and "Q" in str(period_str):
-            parts   = str(period_str).split()
-            year    = int(parts[1])
-            quarter = int(parts[0][1:])
-            half = "H1" if quarter <= 2 else "H2"
-        else:
-            dt   = pd.to_datetime(period_str)
-            year = dt.year
-            half = "H1" if dt.month <= 6 else "H2"
-        return MACRO_CONTEXT.get(f"{year}-{half}", "")
-    except Exception:
-        return ""
-
-
-def _add_macro_context_to_findings(findings: list) -> list:
-    """Append macro context to insights for period-specific findings."""
-    period_patterns = {"Revenue-cost decoupling", "Statistical anomaly", "YoY quarter comparison"}
-    for f in findings:
-        if f.get("pattern") not in period_patterns:
-            continue
-        ctx = _get_macro_context(str(f.get("period", "")))
-        if ctx:
-            f["insight"]        = f"{f['insight']} [Macro context: {ctx}]"
-            f["macro_context"]  = ctx
-    return findings
-
-
 # Templates for confidence_reason field, keyed on anomaly_type
 _CONFIDENCE_REASON_TEMPLATES = {
     "DATA_ISSUE":                 "Non-standalone row; {metric}={value:.1f} outside plausible range {lo:.0f}–{hi:.0f}",
@@ -970,7 +924,6 @@ def detect_patterns(
     # Post-processing
     all_findings = _dedup_yoy_vs_anomalies(all_findings)
     _add_confidence_scores(all_findings)
-    _add_macro_context_to_findings(all_findings)
     _enrich_findings_with_dq(all_findings, df)
 
     return all_findings

@@ -1,33 +1,26 @@
-"""Step 9: LLM Analysis Layer — streams Claude API response over WebSocket.
+"""Step 9: Q&A with AI Industry Specialist — conversational streaming over WebSocket."""
 
-In stub mode (no ANTHROPIC_API_KEY), yields a mock token stream.
-"""
 import asyncio
 import os
 from typing import AsyncIterator
 
 MOCK_RESPONSE = """\
-**Additional Theory 1: Regulatory Cost Pass-Through Restrictions**
-Brazilian industrial companies face sector-specific pricing regulations that may limit the ability to pass input cost increases to customers. If government price controls or long-term supply contracts prevented full pass-through of naphtha cost spikes, the structural COGS increase would persist even after feedstock costs normalized. **Confirming data:** Contract pricing terms with key customers, regulatory filings related to pricing.
+That's a great question. The 2022 COGS inflection reflects the confluence of two major external shocks:
 
-**Additional Theory 2: Working Capital Compression Masking Underlying Economics**
-Braskem's financial restructuring and debt covenant pressures may have led management to optimize for cash over margin — accepting lower-margin contracts to maintain volume and service debt. This would show up as COGS/Revenue deterioration without a proportional decline in production efficiency. **Confirming data:** Management commentary on margin vs. volume trade-offs, contract backlog by margin tier.
+**1. Ukraine War Energy Spike (February 2022)**
+Brent crude surged above $100/bbl in February 2022 and remained elevated for most of H1 2022. Since Braskem's primary feedstock is naphtha (a crude oil derivative), the cost impact was direct and immediate. Unlike US cracker operators who use cheap shale ethane, Brazilian crackers have no affordable alternative feedstock, making them structurally exposed to crude oil price spikes.
 
-**Additional Theory 3: Consolidation of Loss-Making Subsidiaries**
-The step-up in COGS ratio may reflect the full consolidation of previously equity-accounted subsidiaries (notably Braskem Idesa) onto the balance sheet. A loss-making consolidated entity contributes its full COGS to the numerator without proportional revenue contribution. **Confirming data:** Segment elimination entries in consolidation workpapers, Braskem Idesa standalone financials.
+**2. Demand Destruction Without Cost Relief**
+The Fed's aggressive tightening cycle in H2 2022 (400bps of rate hikes) destroyed global polymer demand. This meant the company faced the worst of both worlds: high input costs AND declining selling prices. The revenue contraction visible in 2022 reflects this demand destruction, while COGS remained elevated because feedstock procurement cannot adjust quickly.
 
-**Most Likely Hypothesis Assessment:**
-Among the provided hypotheses, H1 (Naphtha feedstock cost disadvantage) and H2 (China oversupply compressing spreads) are most likely to be co-primary causes. The timing correlation — COGS ratio deteriorated most sharply in 2022-2023, exactly when Chinese PE/PP export pressure intensified and naphtha tracked Brent above $100/bbl — is compelling. H3 (BRL depreciation) is a reinforcing factor, not a primary driver.
+The structural nature of the deterioration — COGS ratio remained high even as energy prices normalized in 2023-2024 — suggests additional factors (China overcapacity, BRL weakness) compounded the initial energy shock.
 
-**Recommended Analytical Next Steps:**
-1. Obtain 3.02.x sub-account COGS breakdown to isolate feedstock vs. conversion costs
-2. Compare Braskem's COGS/Revenue trajectory vs. Unipar Carbocloro (comparable Brazilian petrochemical) to test peer divergence
-3. Build a bridge analysis: FX impact + naphtha price impact + volume impact = explained COGS change vs. residual
+**Key data that would confirm this:** Naphtha purchase price by quarter vs. PE/PP selling price by quarter — this would isolate the feedstock spread effect from other cost factors.
 """
 
 
-async def stream(payload: dict, config) -> AsyncIterator[str]:
-    """Yields tokens. In stub mode, simulates streaming from mock text."""
+async def stream(payload: dict, config, pipeline_state: dict = None) -> AsyncIterator[str]:
+    """Yield Q&A response tokens. Uses Claude API if key available, else streams mock."""
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
 
     if not api_key:
@@ -35,64 +28,85 @@ async def stream(payload: dict, config) -> AsyncIterator[str]:
         for i, word in enumerate(words):
             token = word if i == len(words) - 1 else word + " "
             yield token
-            await asyncio.sleep(0.03)
+            await asyncio.sleep(0.02)
         return
 
     import anthropic
     client = anthropic.AsyncAnthropic(api_key=api_key)
 
-    finding  = payload.get("finding", {})
-    company  = payload.get("company_context", {})
-    macro    = payload.get("macro_context", [])
-    language = payload.get("language", "en")
-    hypotheses = payload.get("hypotheses", [])  # top-3 from Step 7
+    message      = payload.get("message", "")
+    conv_history = payload.get("conversation_history", [])
+    language     = payload.get("language", "en")
+    company_name = payload.get("company_name", "the company")
+
+    ps         = pipeline_state or {}
+    step6_data = ps.get("step6") or {}
+    step7_data = ps.get("step7") or {}
 
     lang_str = "Portuguese (Brazilian)" if language == "pt-br" else "English"
 
     system_prompt = (
-        "You are a senior financial analyst examining public financial data from Brazilian "
-        "companies filed with the CVM (Securities Commission). You have expertise in "
-        "petrochemical industry economics, cost structure analysis, and EBITDA driver "
-        "decomposition.\n\n"
-        "Your task: Given a specific analytical finding and its supporting data, generate "
-        "additional theories and analytical angles that could explain the pattern.\n\n"
-        "You have been provided with structured hypotheses already generated by the "
-        "analytical pipeline. BUILD ON THESE — do not repeat them. Instead:\n"
-        "1. Identify 2-3 ADDITIONAL theories the pipeline may have missed\n"
-        "2. For each theory, explain the specific mechanism and what data would confirm it\n"
-        "3. Highlight which of the provided hypotheses you consider most likely and why\n"
-        "4. Suggest specific analytical next steps\n\n"
-        "Be specific and quantitative. Reference the actual numbers from the finding. "
+        "You are a senior industry specialist and financial analyst. You previously analyzed "
+        "a Brazilian company's CVM financial data and provided an initial assessment.\n\n"
+        "You are now in a follow-up conversation. The user may ask about:\n"
+        "- Specific findings or patterns from the analysis\n"
+        "- Industry dynamics or macro context\n"
+        "- What internal data would be needed to investigate further\n"
+        "- Comparisons with peers or industry benchmarks\n"
+        "- Specific hypotheses and how to test them\n\n"
+        "Be concise and specific. Reference the actual numbers from the analysis when relevant. "
+        "If asked about something outside the scope of the financial analysis, acknowledge the "
+        "limitation and redirect to what the data shows.\n\n"
         f"Write in {lang_str}."
     )
 
-    # Build hypotheses context block
-    hyp_lines = []
-    for h in hypotheses[:3]:
-        mechanism_short = h.get("mechanism", "")[:120].rstrip() + "..."
-        hyp_lines.append(f"- {h['id']}: {h['theory']} — {mechanism_short}")
-    hyp_block = "\n".join(hyp_lines) if hyp_lines else "(Step 7 not run — no prior hypotheses)"
+    # Build base context from step 6 + step 7
+    step6_summary  = _build_step6_summary(step6_data, company_name)
+    step7_response = step7_data.get("response_text", "")
 
-    data_points_str = "\n".join(
-        f"  {k}: {v}" for k, v in (finding.get("data_points") or {}).items()
-    ) or "  (none)"
+    if step6_summary or step7_response:
+        context_content = f"Here is the financial analysis for {company_name}:\n\n{step6_summary}"
+        if step7_response:
+            context_content += f"\n\nAnd here is the industry specialist assessment:\n\n{step7_response}"
+        base_context = [
+            {"role": "user", "content": context_content},
+            {"role": "assistant", "content": "I have the full analysis context. What would you like to explore further?"},
+        ]
+    else:
+        base_context = []
 
-    user_prompt = (
-        f"## Finding\n{finding.get('description', '')}\n\n"
-        f"## Supporting Data\n{data_points_str}\n\n"
-        f"## Macro Context\n{', '.join(macro) if macro else 'None provided'}\n\n"
-        f"## Existing Hypotheses (from analytical pipeline)\n{hyp_block}\n\n"
-        f"## Company Context\n"
-        f"Company: {company.get('name')} ({company.get('sector')})\n"
-        f"Analysis period: {company.get('period')}\n\n"
-        f"Generate your analysis."
-    )
+    messages = base_context + list(conv_history) + [{"role": "user", "content": message}]
 
     async with client.messages.stream(
         model="claude-sonnet-4-6",
         max_tokens=1500,
+        temperature=0.7,
         system=system_prompt,
-        messages=[{"role": "user", "content": user_prompt}],
+        messages=messages,
     ) as stream_obj:
         async for text in stream_obj.text_stream:
             yield text
+
+
+def _build_step6_summary(step6_data: dict, company_name: str) -> str:
+    """Build a compact text summary of Step 6 findings for context injection."""
+    if not step6_data:
+        return ""
+
+    lines = [
+        f"Company: {company_name}",
+        f"Risk Score: {step6_data.get('risk_score', 'N/A')}/100 ({step6_data.get('risk_level', 'N/A')})",
+        "",
+        "Key Findings:",
+    ]
+
+    for f in step6_data.get("findings", []):
+        desc = (f.get("description", "") or "")[:120]
+        lines.append(f"  - {f.get('id','')}: {f.get('pattern','')} ({f.get('severity','')}) — {desc}")
+
+    cs = step6_data.get("composite_signals", [])
+    if cs:
+        lines.append("")
+        lines.append("Composite Signals: " + ", ".join(s.get("composite_signal_type", "") for s in cs))
+
+    return "\n".join(lines)

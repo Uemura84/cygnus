@@ -58,7 +58,7 @@ export default function StepWizard() {
           ← {t.nav.previous}
         </button>
         <div className={styles.footerRight}>
-          <RunStepButton />
+          {state.currentStep !== 7 && state.currentStep !== 8 && state.currentStep !== 9 && <RunStepButton />}
           <button
             className={styles.navBtn}
             disabled={state.currentStep >= 9}

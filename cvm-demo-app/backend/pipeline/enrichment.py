@@ -24,21 +24,6 @@ SECTOR_MAP = {
     "VALE":      "Mining",
 }
 
-# Macro context lookup — maps year-halves to key economic events.
-MACRO_CONTEXT = {
-    "2020-H1": "COVID-19 demand collapse — industrial output down globally",
-    "2020-H2": "COVID recovery — fiscal stimulus, demand rebound in China",
-    "2021-H1": "Post-COVID demand surge — commodity supercycle begins",
-    "2021-H2": "Commodity supercycle peak — naphtha/ethylene at multi-year highs",
-    "2022-H1": "Ukraine war — energy spike, Brent >$100/bbl; naphtha cost surge",
-    "2022-H2": "Global tightening cycle — Fed raises 400bps, demand destruction begins",
-    "2023-H1": "Post-war normalization — petrochemical margins under China oversupply pressure",
-    "2023-H2": "China restart — polyethylene/PVC export pressure intensifies",
-    "2024-H1": "Fiscal uncertainty — BRL weakness adds import cost pressure",
-    "2024-H2": "Commodity cycle trough — petrochemical spreads at cycle lows",
-    "2025-H1": "Potential recovery — monitor spread recovery and demand rebound signals",
-}
-
 
 # =============================================================================
 # Composite Signal Engine helpers
@@ -682,7 +667,7 @@ def enrich(findings: list, df: pd.DataFrame) -> dict:
         df:       The enriched metrics DataFrame (with DQ columns from Step 5).
 
     Returns dict with:
-        composite_signals, risk_scores, macro_timeline,
+        composite_signals, risk_scores,
         risk_score (for focus company), risk_level (for focus company).
     """
     composite_signals = build_composite_signals(findings, df)
@@ -704,21 +689,13 @@ def enrich(findings: list, df: pd.DataFrame) -> dict:
         risk_scores.append(score)
     risk_scores.sort(key=lambda s: s["risk_score"], reverse=True)
 
-    # Macro timeline (sorted by period key)
-    macro_timeline = [
-        {"period": k, "event": v}
-        for k, v in sorted(MACRO_CONTEXT.items())
-    ]
-
     # Primary company risk (highest-scored or first)
     primary = risk_scores[0] if risk_scores else {}
 
     return {
-        "composite_signals":   composite_signals,
-        "risk_scores":         risk_scores,
-        "macro_timeline":      macro_timeline,
-        "risk_score":          primary.get("risk_score", 0.0),
-        "risk_level":          primary.get("priority", "LOW"),
-        "findings_enriched":   len([f for f in findings if f.get("severity") != "SUMMARY"]),
-        "macro_annotations_added": sum(1 for f in findings if "macro_context" in f),
+        "composite_signals": composite_signals,
+        "risk_scores":       risk_scores,
+        "risk_score":        primary.get("risk_score", 0.0),
+        "risk_level":        primary.get("priority", "LOW"),
+        "findings_enriched": len([f for f in findings if f.get("severity") != "SUMMARY"]),
     }

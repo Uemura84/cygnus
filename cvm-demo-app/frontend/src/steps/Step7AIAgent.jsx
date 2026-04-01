@@ -3,7 +3,7 @@ import { useI18n, useAppState, useAppDispatch } from '../App'
 import MarkdownView from '../components/MarkdownView'
 import styles from './Step.module.css'
 
-export default function Step8Summary({ stepState, data }) {
+export default function Step7AIAgent({ stepState, data }) {
   const t = useI18n()
   const appState = useAppState()
   const dispatch = useAppDispatch()
@@ -14,8 +14,8 @@ export default function Step8Summary({ stepState, data }) {
   const wsRef = useRef(null)
   const containerRef = useRef(null)
 
+  // Build payload from step 6 state
   const step6Data = appState.stepData[6]?.data ?? {}
-  const step7Data = appState.stepData[7]?.data ?? {}
 
   // Auto-scroll as text grows
   useEffect(() => {
@@ -46,9 +46,10 @@ export default function Step8Summary({ stepState, data }) {
       if (e.data === '[DONE]') {
         setStatus('done')
         ws.close()
+        // Mark step 7 complete in frontend state
         dispatch({
           type: 'SET_STEP_COMPLETE',
-          step: 8,
+          step: 7,
           data: {
             status: 'complete',
             data: { response_text: accumulated, status: 'complete' },
@@ -71,46 +72,51 @@ export default function Step8Summary({ stepState, data }) {
     return () => ws.close()
   }, [payload])
 
-  function handleGenerate() {
+  function handleConsult() {
+    if (!step6Data.findings) return
     setPayload({
-      step: 8,
-      step6_data: step6Data,
-      step7_response: step7Data?.response_text ?? '',
+      step: 7,
+      findings: step6Data.findings ?? [],
+      composite_signals: step6Data.composite_signals ?? [],
+      risk_score: step6Data.risk_score ?? 0,
+      risk_level: step6Data.risk_level ?? 'UNKNOWN',
+      finding_categories: step6Data.finding_categories ?? {},
       company_name: 'BRASKEM S.A.',
+      date_range: '2020–2025',
       language: appState.language ?? 'en',
     })
   }
 
   const isStreaming = status === 'connecting' || status === 'streaming'
-  const hasStep6Context = !!step6Data.findings?.length
+  const hasFindingsContext = !!step6Data.findings?.length
 
   return (
     <div className={styles.wrapper}>
-      <h2 className={styles.title}>{t.step8.title}</h2>
-      <p className={styles.description}>{t.step8.description}</p>
+      <h2 className={styles.title}>{t.step7.title}</h2>
+      <p className={styles.description}>{t.step7.description}</p>
 
-      {/* Generate button */}
+      {/* Consult button */}
       {status === 'idle' || status === 'error' ? (
         <div style={{ marginBottom: '20px' }}>
           <button
-            onClick={handleGenerate}
-            disabled={!hasStep6Context || isStreaming}
+            onClick={handleConsult}
+            disabled={!hasFindingsContext || isStreaming}
             style={{
               padding: '10px 24px',
               borderRadius: '8px',
-              background: hasStep6Context ? '#2563eb' : '#e2e8f0',
-              color: hasStep6Context ? '#fff' : '#94a3b8',
+              background: hasFindingsContext ? '#2563eb' : '#e2e8f0',
+              color: hasFindingsContext ? '#fff' : '#94a3b8',
               border: 'none',
-              cursor: hasStep6Context ? 'pointer' : 'not-allowed',
+              cursor: hasFindingsContext ? 'pointer' : 'not-allowed',
               fontWeight: 700,
               fontSize: '0.9rem',
             }}
           >
-            {t.step8.run_button ?? 'Generate Summary'}
+            {t.step7.run_button ?? 'Consult AI Agent'}
           </button>
-          {!hasStep6Context && (
+          {!hasFindingsContext && (
             <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '8px' }}>
-              Run Step 6 first to enable summary generation.
+              Run Step 6 first to enable AI analysis.
             </p>
           )}
           {status === 'error' && (
@@ -125,10 +131,10 @@ export default function Step8Summary({ stepState, data }) {
       {status !== 'idle' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '0.8rem' }}>
           {status === 'connecting' && (
-            <span style={{ color: '#f59e0b' }}>⏳ {t.step8.running ?? 'Generating executive summary...'}</span>
+            <span style={{ color: '#f59e0b' }}>⏳ {t.step7.running ?? 'Consulting AI Industry Specialist...'}</span>
           )}
           {status === 'streaming' && (
-            <span style={{ color: '#2563eb' }}>● {t.step8.running ?? 'Generating executive summary...'}</span>
+            <span style={{ color: '#2563eb' }}>● {t.step7.running ?? 'Consulting AI Industry Specialist...'}</span>
           )}
           {status === 'done' && (
             <span style={{ color: '#16a34a' }}>✓ Complete</span>
@@ -145,7 +151,7 @@ export default function Step8Summary({ stepState, data }) {
             border: '1px solid #e2e8f0',
             borderRadius: '8px',
             padding: '16px 20px',
-            maxHeight: '560px',
+            maxHeight: '520px',
             overflowY: 'auto',
             marginBottom: '16px',
             fontSize: '0.875rem',
@@ -160,9 +166,10 @@ export default function Step8Summary({ stepState, data }) {
       {/* AI disclaimer */}
       {status === 'done' && (
         <p style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
-          {t.step8.ai_disclaimer ?? 'This summary was generated by AI. Domain expert review is recommended.'}
+          {t.step7.ai_disclaimer ?? 'This analysis was generated by AI. Domain expert review is recommended.'}
         </p>
       )}
     </div>
   )
 }
+
