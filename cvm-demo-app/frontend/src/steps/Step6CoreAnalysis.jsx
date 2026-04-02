@@ -190,6 +190,33 @@ function FindingCard({ f, cardStyle, timeSeries, t }) {
         )}
       </div>
 
+      {/* Estimated Impact */}
+      {f.estimated_impact && (
+        <div style={{
+          background: '#fffbeb',
+          border: '1px solid #fde68a',
+          borderRadius: '6px',
+          padding: '8px 12px',
+          marginBottom: '10px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#92400e' }}>
+              {t.materiality?.estimated_impact ?? 'Estimated Impact'}
+            </span>
+            <strong style={{ fontSize: '1rem', color: '#78350f' }}>{f.estimated_impact.formatted}</strong>
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#a16207', marginTop: '2px' }}>
+            <span style={{ fontWeight: 600 }}>{t.materiality?.basis ?? 'Basis'}:</span>{' '}
+            <span
+              title={f.estimated_impact.caveat}
+              style={{ cursor: 'help', borderBottom: '1px dotted #a16207' }}
+            >
+              {f.estimated_impact.basis}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Description */}
       <p style={{ fontSize: '0.84rem', color: '#475569', marginBottom: '8px', lineHeight: 1.55 }}>{f.description}</p>
 

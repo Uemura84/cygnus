@@ -60,6 +60,10 @@ def _build_time_series(pivot: pd.DataFrame, company_name: str) -> list:
         else:
             record["COGS_YoY_pct"] = None
 
+        # Absolute values for materiality layer (BRL, in thousands)
+        record["revenue_abs"] = float(rev_val) if pd.notna(rev_val) else 0.0
+        record["cogs_abs"] = abs(float(cogs_val)) if pd.notna(cogs_val) else 0.0
+
         if pd.notna(rev_val):
             prev_revenue = float(rev_val)
         if pd.notna(cogs_val):

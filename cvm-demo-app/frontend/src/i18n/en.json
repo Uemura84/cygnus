@@ -142,6 +142,11 @@
     "hide_chart": "▲ Hide chart",
     "timeline_title": "Findings vs. Macro Events"
   },
+  "materiality": {
+    "estimated_impact": "Estimated Impact",
+    "basis": "Basis",
+    "caveat_tooltip": "This is an order-of-magnitude estimate"
+  },
   "step7": {
     "title": "AI Industry Specialist",
     "description": "AI-powered analysis with industry and macro context",

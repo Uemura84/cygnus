@@ -142,6 +142,11 @@
     "hide_chart": "▲ Ocultar gráfico",
     "timeline_title": "Achados vs. Eventos Macro"
   },
+  "materiality": {
+    "estimated_impact": "Impacto Estimado",
+    "basis": "Base de Cálculo",
+    "caveat_tooltip": "Estimativa de ordem de grandeza"
+  },
   "step7": {
     "title": "Especialista Setorial IA",
     "description": "Análise com IA incluindo contexto setorial e macroeconômico",

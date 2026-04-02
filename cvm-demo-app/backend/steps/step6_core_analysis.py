@@ -8,6 +8,7 @@ from config import DATA_DIR, CACHE_DIR
 from cache_utils import load_cache, save_cache
 from pipeline import pattern_detector, enrichment
 from pipeline.enrichment import SECTOR_MAP
+from pipeline.materiality import estimate_impact
 
 
 def _load_enriched_df(company_name: str, data_dir) -> pd.DataFrame:
@@ -33,19 +34,20 @@ def _load_enriched_df(company_name: str, data_dir) -> pd.DataFrame:
 def _shape_findings(findings: list) -> list:
     shaped = []
     base_keys = {"company", "metric", "pattern", "severity", "confidence_score",
-                 "anomaly_type", "confidence_reason", "insight"}
+                 "anomaly_type", "confidence_reason", "insight", "estimated_impact"}
     for i, f in enumerate(findings, start=1):
         record = {
-            "id":           f"F{i:03d}",
-            "company":      f.get("company", ""),
-            "pattern":      f.get("pattern", ""),
-            "severity":     f.get("severity", "MEDIUM"),
-            "metric":       f.get("metric", ""),
-            "confidence":   f.get("confidence_score", "MEDIUM"),
-            "anomaly_type": f.get("anomaly_type", ""),
-            "description":  f.get("insight", ""),
-            "period":       f.get("period", ""),
-            "data_points":  {k: v for k, v in f.items() if k not in base_keys},
+            "id":               f"F{i:03d}",
+            "company":          f.get("company", ""),
+            "pattern":          f.get("pattern", ""),
+            "severity":         f.get("severity", "MEDIUM"),
+            "metric":           f.get("metric", ""),
+            "confidence":       f.get("confidence_score", "MEDIUM"),
+            "anomaly_type":     f.get("anomaly_type", ""),
+            "description":      f.get("insight", ""),
+            "period":           f.get("period", ""),
+            "estimated_impact": f.get("estimated_impact"),
+            "data_points":      {k: v for k, v in f.items() if k not in base_keys},
         }
         shaped.append(record)
     return shaped
@@ -117,6 +119,13 @@ def run(config, pipeline_state: dict) -> dict:
             df_quarterly=df_quarterly,
             sector_map=SECTOR_MAP,
         )
+
+        # Materiality layer: add BRL impact estimates from Step 4 absolute values
+        step4_time_series = pipeline_state.get("step4", {}).get("time_series", [])
+        if not step4_time_series:
+            step4_time_series = pipeline_state.get("step4", {}).get("data", {}).get("time_series", [])
+        metrics_df = pd.DataFrame(step4_time_series) if step4_time_series else pd.DataFrame()
+        estimate_impact(findings, metrics_df, language=getattr(config, "language", "en"))
 
         # Save raw findings for downstream steps
         company_key   = config.company_name.split()[0].lower()
