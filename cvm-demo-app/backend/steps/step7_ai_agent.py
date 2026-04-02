@@ -6,6 +6,7 @@ from typing import AsyncIterator
 
 from config import CACHE_DIR
 from cache_utils import load_cache, save_cache
+from pipeline.enrichment import SECTOR_MAP
 
 
 MOCK_RESPONSE = """\
@@ -82,6 +83,9 @@ async def stream(payload: dict, config) -> AsyncIterator[str]:
     finding_cats    = payload.get("finding_categories", {})
 
     lang_str = "Portuguese (Brazilian)" if language == "pt-br" else "English"
+    company_key = company_name.split()[0].upper()
+    sector = SECTOR_MAP.get(company_key, "Unknown")
+    sector_str = sector if sector != "Unknown" else "Unknown (infer from company name and findings)"
 
     system_prompt = (
         "You are a senior industry specialist and financial analyst with deep expertise in "
@@ -133,7 +137,7 @@ async def stream(payload: dict, config) -> AsyncIterator[str]:
     cs_types = ", ".join(s.get("composite_signal_type", "") for s in composite_sigs) or "None"
 
     user_prompt = (
-        f"## Company\n{company_name} — Petrochemical\n\n"
+        f"## Company\n{company_name} — {sector_str}\n\n"
         f"## Analysis Period\n{date_range}\n\n"
         f"## Risk Assessment\nRisk Score: {risk_score}/100 ({risk_level})\n"
         f"Composite Signals: {cs_types}\n\n"

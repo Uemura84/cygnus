@@ -22,11 +22,12 @@ _IS_ACCOUNTS = [
 
 
 def _build_income_statement(pivot: pd.DataFrame, company_name: str) -> list:
-    """Extract annual (DFP) income statement amounts from the pivot."""
+    """Extract annual (DFP) income statement amounts from the pivot (2021–2025)."""
     company_key = company_name.split()[0].upper()
     comp = pivot[
         pivot["DENOM_CIA"].str.upper().str.contains(company_key, na=False) &
-        (pivot["_doc_type"] == "DFP")
+        (pivot["_doc_type"] == "DFP") &
+        (pd.to_datetime(pivot["DT_REFER"], errors="coerce").dt.year >= 2021)
     ].sort_values("DT_REFER")
 
     rows = []

@@ -862,15 +862,32 @@ def quality_scan(df: pd.DataFrame) -> dict:
     n_clean   = total - n_flagged
     quality_score = round(n_clean / total, 4) if total > 0 else 1.0
 
-    # Build flags list from flagged rows
+    # Build flags list — one entry per metric violation per row
     flags = []
     for _, row in df[flagged_mask].iterrows():
-        flags.append({
-            "period":     str(row.get("DT_REFER", "")),
-            "company":    str(row.get("DENOM_CIA", "")),
-            "flags":      str(row.get("_plausibility_flags", "")),
-            "confidence": str(row.get("_row_confidence", "MEDIUM")),
-        })
+        period     = str(row.get("DT_REFER", ""))
+        confidence = str(row.get("_row_confidence", "MEDIUM"))
+        raw_flags  = str(row.get("_plausibility_flags", ""))
+        for issue in raw_flags.split(";"):
+            issue = issue.strip()
+            if not issue:
+                continue
+            # Format: "Gross_Margin_pct=2.2 outside [-20,80]"
+            metric, value, reason = issue, "", issue
+            if "=" in issue and " outside " in issue:
+                metric_val, rest = issue.split(" outside ", 1)
+                if "=" in metric_val:
+                    metric, val_str = metric_val.split("=", 1)
+                    value  = val_str
+                    reason = f"outside {rest}"
+            flags.append({
+                "period":     period,
+                "metric":     metric,
+                "value":      value,
+                "flag":       "DATA_ISSUE",
+                "reason":     reason,
+                "confidence": confidence,
+            })
 
     return {
         "total_data_points": total,
