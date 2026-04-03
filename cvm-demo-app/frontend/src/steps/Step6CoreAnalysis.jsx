@@ -8,6 +8,9 @@ const SEVERITY_BADGE = { HIGH: styles.badgeHigh, MEDIUM: styles.badgeMedium, LOW
 const SEVERITY_ORDER = { HIGH: 0, MEDIUM: 1, LOW: 2 }
 const CONFIDENCE_BADGE = { HIGH: styles.badgeLow, MEDIUM: styles.badgeMedium, LOW: styles.badgeHigh }
 
+// Left border color by severity per design system
+const SEVERITY_BORDER = { HIGH: '#E24B4A', MEDIUM: '#EF9F27', LOW: 'var(--blue)' }
+
 function formatKey(key) {
   return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
@@ -139,7 +142,7 @@ export default function Step6CoreAnalysis({ stepState, data }) {
               const cs = CATEGORY_STYLE[cat]
               return (
                 <div key={cat} style={{ marginBottom: '24px' }}>
-                  <h4 style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: cs.titleColor, marginBottom: '10px' }}>
+                  <h4 style={{ fontSize: '0.68rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.13em', color: 'var(--blue)', fontFamily: "'JetBrains Mono', monospace", marginBottom: '10px' }}>
                     {CATEGORY_LABEL[cat]}
                   </h4>
                   {catFindings.map((f) => (
@@ -164,18 +167,30 @@ export default function Step6CoreAnalysis({ stepState, data }) {
 
 function FindingCard({ f, cardStyle, timeSeries, t }) {
   const [showChart, setShowChart] = useState(false)
+  const borderColor = SEVERITY_BORDER[f.severity] || 'var(--blue)'
 
   return (
     <div style={{
       marginBottom: '12px',
-      border: cardStyle.border,
-      background: cardStyle.background,
-      borderRadius: '8px',
+      background: '#fff',
+      border: '1px solid rgba(11,31,58,0.07)',
+      borderLeft: `4px solid ${borderColor}`,
+      borderRadius: '6px',
       padding: '14px 16px',
+      transition: 'box-shadow 0.15s',
     }}>
       {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
-        <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#94a3b8', flexShrink: 0 }}>{f.id}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '0.7rem',
+          color: 'var(--blue)',
+          background: 'var(--blue-dim)',
+          padding: '2px 7px',
+          borderRadius: '4px',
+          flexShrink: 0,
+          letterSpacing: '0.03em',
+        }}>{f.id}</span>
         <strong style={{ fontSize: '0.88rem' }}>{f.pattern}</strong>
         <span className={SEVERITY_BADGE[f.severity]}>{f.severity}</span>
         {f.confidence && (

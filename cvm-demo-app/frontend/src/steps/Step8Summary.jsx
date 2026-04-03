@@ -141,16 +141,17 @@ export default function Step8Summary({ stepState, data }) {
         <div
           ref={containerRef}
           style={{
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            padding: '16px 20px',
-            maxHeight: '560px',
+            background: '#fff',
+            border: '1px solid rgba(11,31,58,0.07)',
+            borderRadius: '6px',
+            padding: '28px 32px',
+            maxHeight: '600px',
             overflowY: 'auto',
             marginBottom: '16px',
-            fontSize: '0.875rem',
-            lineHeight: 1.7,
-            color: '#1e293b',
+            fontSize: '1rem',
+            lineHeight: 1.8,
+            color: 'var(--charcoal)',
+            fontFamily: "'DM Serif Display', serif",
           }}
         >
           <MarkdownView text={text || data?.data?.response_text || ''} />
