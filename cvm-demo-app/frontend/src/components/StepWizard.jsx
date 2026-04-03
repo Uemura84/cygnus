@@ -26,7 +26,7 @@ export default function StepWizard() {
         <div className={styles.headerLeft}>
           <span className={styles.title}>{t.header.title}</span>
           <span className={styles.subtitle}>
-            {t.header.subtitle.replace('{company}', state.companyName ?? 'BRASKEM S.A.')}
+            {(t.header.subtitle_template ?? t.header.subtitle).replace('{company}', state.companyName ?? 'BRASKEM S.A.')}
           </span>
         </div>
         <div className={styles.headerRight}>

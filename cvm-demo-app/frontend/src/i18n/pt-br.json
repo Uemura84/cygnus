@@ -2,6 +2,7 @@
   "header": {
     "title": "Cygnus",
     "subtitle": "{company} — Pipeline de Dados Públicos",
+    "subtitle_template": "{company} — Análise de Sinais Financeiros",
     "lang_toggle": "EN",
     "cache_toggle_live": "Ao Vivo",
     "cache_toggle_cache": "Cache"

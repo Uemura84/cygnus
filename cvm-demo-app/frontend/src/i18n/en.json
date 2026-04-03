@@ -2,6 +2,7 @@
   "header": {
     "title": "Cygnus",
     "subtitle": "{company} — Public Data Pipeline",
+    "subtitle_template": "{company} — Financial Signal Analysis",
     "lang_toggle": "PT-BR",
     "cache_toggle_live": "Live",
     "cache_toggle_cache": "Cache"
