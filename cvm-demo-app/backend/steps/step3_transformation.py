@@ -24,11 +24,16 @@ _IS_ACCOUNTS = [
 def _build_income_statement(pivot: pd.DataFrame, company_name: str) -> list:
     """Extract annual (DFP) income statement amounts from the pivot (2021–2025)."""
     company_key = company_name.split()[0].upper()
+
+    # Support both common model column names and legacy CVM names
+    id_col   = "company_id" if "company_id" in pivot.columns else "DENOM_CIA"
+    date_col = "period_date" if "period_date" in pivot.columns else "DT_REFER"
+
     comp = pivot[
-        pivot["DENOM_CIA"].str.upper().str.contains(company_key, na=False) &
+        pivot[id_col].str.upper().str.contains(company_key, na=False) &
         (pivot["_doc_type"] == "DFP") &
-        (pd.to_datetime(pivot["DT_REFER"], errors="coerce").dt.year >= 2021)
-    ].sort_values("DT_REFER")
+        (pd.to_datetime(pivot[date_col], errors="coerce").dt.year >= 2021)
+    ].sort_values(date_col)
 
     rows = []
     for desc in _IS_ACCOUNTS:
@@ -36,7 +41,7 @@ def _build_income_statement(pivot: pd.DataFrame, company_name: str) -> list:
             continue
         values = {}
         for _, row in comp.iterrows():
-            year = str(row["DT_REFER"])[:4]
+            year = str(row[date_col])[:4]
             val = row.get(desc)
             values[year] = round(float(val), 0) if pd.notna(val) else None
         rows.append({"description": desc, "values": values})

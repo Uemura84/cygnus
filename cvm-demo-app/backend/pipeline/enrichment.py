@@ -334,9 +334,9 @@ def build_composite_signals(findings: list, df: pd.DataFrame) -> list:
         )
 
         # Analysis window
-        comp_rows = df[df["DENOM_CIA"] == company] if "DENOM_CIA" in df.columns else pd.DataFrame()
-        if not comp_rows.empty and "DT_REFER" in comp_rows.columns:
-            dates = pd.to_datetime(comp_rows["DT_REFER"], errors="coerce").dropna()
+        comp_rows = df[df["company_id"] == company] if "company_id" in df.columns else pd.DataFrame()
+        if not comp_rows.empty and "period_date" in comp_rows.columns:
+            dates = pd.to_datetime(comp_rows["period_date"], errors="coerce").dropna()
             analysis_window = (
                 f"{dates.min().strftime('%Y-%m-%d')} to {dates.max().strftime('%Y-%m-%d')}"
                 if not dates.empty else "unknown"
@@ -545,7 +545,7 @@ def _score_persistence(findings: list, df: pd.DataFrame, company: str) -> float:
     if df is None or df.empty:
         return 10.0  # neutral
 
-    comp_df = df[df["DENOM_CIA"] == company] if "DENOM_CIA" in df.columns else pd.DataFrame()
+    comp_df = df[df["company_id"] == company] if "company_id" in df.columns else pd.DataFrame()
 
     if comp_df.empty:
         return 10.0
@@ -721,7 +721,7 @@ def enrich(findings: list, df: pd.DataFrame) -> dict:
     for f in findings:
         by_company_findings[f.get("company", "")].append(f)
 
-    companies     = sorted(df["DENOM_CIA"].unique()) if "DENOM_CIA" in df.columns else sorted(by_company_findings.keys())
+    companies     = sorted(df["company_id"].unique()) if "company_id" in df.columns else sorted(by_company_findings.keys())
     risk_scores   = []
     for company in companies:
         score = score_company_risk(

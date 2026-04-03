@@ -1,0 +1,155 @@
+{
+  "company_name": "VOTORANTIM CIMENTOS S.A.",
+  "snapshot_date": "2026-04-03",
+  "snapshot_branch": "master (pre-sprint1-refactor)",
+  "step4_data": {
+    "metrics_computed": [
+      "Gross_Margin_pct",
+      "EBIT_Margin_pct",
+      "COGS_pct_Revenue",
+      "Revenue_YoY_pct",
+      "COGS_YoY_pct",
+      "EBITDA_Margin_pct"
+    ],
+    "periods": 4,
+    "time_series": [
+      {
+        "period": "2022-12-31",
+        "Gross_Margin_pct": 18.66,
+        "EBIT_Margin_pct": 11.53,
+        "EBITDA_Margin_pct": 18.69,
+        "COGS_pct_Revenue": 81.34,
+        "SGA_pct_Revenue": 4.83,
+        "Revenue_YoY_pct": null,
+        "COGS_YoY_pct": null,
+        "revenue_abs": 25797366.0,
+        "cogs_abs": 20982540.0
+      },
+      {
+        "period": "2023-12-31",
+        "Gross_Margin_pct": 22.05,
+        "EBIT_Margin_pct": 14.98,
+        "EBITDA_Margin_pct": 21.98,
+        "COGS_pct_Revenue": 77.95,
+        "SGA_pct_Revenue": 5.07,
+        "Revenue_YoY_pct": 3.4,
+        "COGS_YoY_pct": -0.9,
+        "revenue_abs": 26682125.0,
+        "cogs_abs": 20799481.0
+      },
+      {
+        "period": "2024-12-31",
+        "Gross_Margin_pct": 22.1,
+        "EBIT_Margin_pct": 10.64,
+        "EBITDA_Margin_pct": 19.54,
+        "COGS_pct_Revenue": 77.9,
+        "SGA_pct_Revenue": 5.68,
+        "Revenue_YoY_pct": -0.4,
+        "COGS_YoY_pct": -0.5,
+        "revenue_abs": 26564574.0,
+        "cogs_abs": 20693413.0
+      },
+      {
+        "period": "2025-12-31",
+        "Gross_Margin_pct": 20.93,
+        "EBIT_Margin_pct": 13.81,
+        "EBITDA_Margin_pct": 23.52,
+        "COGS_pct_Revenue": 79.07,
+        "SGA_pct_Revenue": 5.6,
+        "Revenue_YoY_pct": 10.7,
+        "COGS_YoY_pct": 12.4,
+        "revenue_abs": 29416000.0,
+        "cogs_abs": 23259000.0
+      }
+    ],
+    "source": "live"
+  },
+  "step5_data": {
+    "total_data_points": 13,
+    "clean": 13,
+    "flagged": 0,
+    "quality_score": 1.0,
+    "flags": [],
+    "source": "live"
+  },
+  "step6_data": {
+    "algorithms_run": [
+      "margin_trends",
+      "cost_composition_drift",
+      "revenue_cost_decoupling",
+      "peer_comparison",
+      "statistical_anomaly",
+      "yoy_quarter_comparison"
+    ],
+    "raw_findings": 2,
+    "findings": [
+      {
+        "id": "F001",
+        "company": "VOTORANTIM CIMENTOS S.A.",
+        "pattern": "Potential cost reclassification",
+        "severity": "HIGH",
+        "metric": "",
+        "confidence": "LOW",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "VOTORANTIM CIMENTOS S.A.: COGS and SG&A show strong negative correlation (-0.63), suggesting costs may be shifting between categories. This could indicate accounting reclassification or genuine operational changes worth investigating.",
+        "period": "",
+        "estimated_impact": null,
+        "data_points": {
+          "categories": "COGS ↔ SG&A",
+          "correlation": -0.631
+        }
+      },
+      {
+        "id": "F002",
+        "company": "VOTORANTIM CIMENTOS S.A.",
+        "pattern": "Potential cost reclassification",
+        "severity": "HIGH",
+        "metric": "",
+        "confidence": "MEDIUM",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "VOTORANTIM CIMENTOS S.A.: COGS and Selling Expenses show strong negative correlation (-0.85), suggesting costs may be shifting between categories. This could indicate accounting reclassification or genuine operational changes worth investigating.",
+        "period": "",
+        "estimated_impact": null,
+        "data_points": {
+          "categories": "COGS ↔ Selling Expenses",
+          "correlation": -0.85
+        }
+      }
+    ],
+    "finding_categories": {
+      "core": [],
+      "supporting": [],
+      "contextual": [
+        "F001",
+        "F002"
+      ],
+      "anomalies": []
+    },
+    "composite_signals": [],
+    "risk_score": 6.8,
+    "risk_level": "LOW",
+    "risk_scores": [
+      {
+        "company": "VOTORANTIM CIMENTOS S.A.",
+        "risk_score": 6.8,
+        "priority": "LOW",
+        "top_risk_drivers": [
+          "Potential cost reclassification"
+        ],
+        "score_breakdown": {
+          "magnitude": 0.0,
+          "persistence": 0.8,
+          "confirmation": 0,
+          "peer_gap": 0.0,
+          "data_confidence": 6.0
+        },
+        "composite_signal_count": 0,
+        "composite_signal_types": [],
+        "key_supporting_findings": 2,
+        "executive_summary": "VOTORANTIM CIMENTOS S.A. is rated LOW risk (score: 6.8/100). No composite signals detected; review individual findings."
+      }
+    ],
+    "findings_enriched": 2,
+    "source": "live"
+  }
+}

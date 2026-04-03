@@ -152,8 +152,8 @@ def analyze_margin_trends(df: pd.DataFrame, periods_per_year: int = 4) -> list:
     """Detect sustained margin compression or expansion."""
     findings = []
 
-    for company in df["DENOM_CIA"].unique():
-        comp = df[df["DENOM_CIA"] == company].sort_values("DT_REFER").copy()
+    for company in df["company_id"].unique():
+        comp = df[df["company_id"] == company].sort_values("period_date").copy()
 
         if len(comp) < 4:
             continue
@@ -238,8 +238,8 @@ def analyze_cost_drift(df: pd.DataFrame) -> list:
         ("Selling_pct_Revenue", "Selling Expenses"),
     ]
 
-    for company in df["DENOM_CIA"].unique():
-        comp = df[df["DENOM_CIA"] == company].sort_values("DT_REFER").copy()
+    for company in df["company_id"].unique():
+        comp = df[df["company_id"] == company].sort_values("period_date").copy()
 
         if len(comp) < 4:
             continue
@@ -316,20 +316,22 @@ def analyze_revenue_cost_decoupling(df: pd.DataFrame) -> list:
     """Detect periods where costs don't move proportionally with revenue."""
     findings = []
 
-    revenue_col = "Receita de Venda de Bens e/ou Serviços"
-    cogs_col    = "Custo dos Bens e/ou Serviços Vendidos"
+    # Support both common model column names and legacy CVM Portuguese names
+    revenue_col = "revenue" if "revenue" in df.columns else "Receita de Venda de Bens e/ou Serviços"
+    cogs_col    = "cogs"    if "cogs"    in df.columns else "Custo dos Bens e/ou Serviços Vendidos"
 
     if revenue_col not in df.columns or cogs_col not in df.columns:
         return findings
 
-    for company in df["DENOM_CIA"].unique():
-        comp = df[df["DENOM_CIA"] == company].sort_values("DT_REFER").copy()
+    for company in df["company_id"].unique():
+        comp = df[df["company_id"] == company].sort_values("period_date").copy()
 
         if len(comp) < 4:
             continue
 
         revenue = comp[revenue_col].dropna()
-        cogs    = comp[cogs_col].dropna().abs()  # COGS is typically negative
+        # cogs column stores absolute values in common model; legacy stores negative values
+        cogs    = comp[cogs_col].dropna().abs()
 
         if len(revenue) < 4 or len(cogs) < 4:
             continue
@@ -348,7 +350,7 @@ def analyze_revenue_cost_decoupling(df: pd.DataFrame) -> list:
             if len(anomalous_periods) > 0:
                 for idx in anomalous_periods:
                     period_idx = rev_pct_change.index[idx]
-                    date = comp.loc[period_idx, "DT_REFER"] if period_idx in comp.index else "Unknown"
+                    date = comp.loc[period_idx, "period_date"] if period_idx in comp.index else "Unknown"
                     rev_chg  = rev_pct_change.iloc[idx] * 100
                     cogs_chg = cogs_pct_change.iloc[idx] * 100
 
@@ -384,11 +386,11 @@ def analyze_peer_comparison(df: pd.DataFrame, sector_map: dict = None) -> list:
     metric_cols = ["Gross_Margin_pct", "EBIT_Margin_pct", "COGS_pct_Revenue", "SGA_pct_Revenue"]
     available_metrics = [col for col in metric_cols if col in df.columns]
 
-    if not available_metrics or df["DENOM_CIA"].nunique() < 2:
+    if not available_metrics or df["company_id"].nunique() < 2:
         return findings
 
     # Get latest period for each company
-    latest = df.sort_values("DT_REFER").groupby("DENOM_CIA").tail(1).copy()
+    latest = df.sort_values("period_date").groupby("DENOM_CIA").tail(1).copy()
 
     # Assign sector labels
     def _get_sector(company_name: str) -> str:
@@ -398,7 +400,7 @@ def analyze_peer_comparison(df: pd.DataFrame, sector_map: dict = None) -> list:
                     return sector
         return "All"
 
-    latest["_sector"] = latest["DENOM_CIA"].apply(_get_sector)
+    latest["_sector"] = latest["company_id"].apply(_get_sector)
 
     for sector_name, sector_df in latest.groupby("_sector"):
         if len(sector_df) < 2:
@@ -425,7 +427,7 @@ def analyze_peer_comparison(df: pd.DataFrame, sector_map: dict = None) -> list:
                     worse_row  = values.loc[worse_idx]
                     better_row = values.loc[better_idx]
                     finding = {
-                        "company":       worse_row["DENOM_CIA"],
+                        "company":       worse_row["company_id"],
                         "metric":        metric,
                         "pattern":       "Peer divergence",
                         "company_value": round(worse_row[metric], 2),
@@ -433,9 +435,9 @@ def analyze_peer_comparison(df: pd.DataFrame, sector_map: dict = None) -> list:
                         "gap_pp":        round(gap, 2),
                         "severity":      "HIGH" if gap > (20.0 if "Margin" in metric else 25.0) else "MEDIUM",
                         "insight": (
-                            f"{worse_row['DENOM_CIA']}: {metric.replace('_pct', '')} "
+                            f"{worse_row['company_id']}: {metric.replace('_pct', '')} "
                             f"({worse_row[metric]:.1f}%) {verb} "
-                            f"{better_row['DENOM_CIA']} ({better_row[metric]:.1f}%) "
+                            f"{better_row['company_id']} ({better_row[metric]:.1f}%) "
                             f"by {gap:.1f}pp."
                         ),
                     }
@@ -453,7 +455,7 @@ def analyze_peer_comparison(df: pd.DataFrame, sector_map: dict = None) -> list:
                     if abs(z_score) > 1:
                         position = "above" if z_score > 0 else "below"
                         finding = {
-                            "company":      row["DENOM_CIA"],
+                            "company":      row["company_id"],
                             "metric":       metric,
                             "pattern":      "Peer divergence",
                             "company_value": round(row[metric], 2),
@@ -461,7 +463,7 @@ def analyze_peer_comparison(df: pd.DataFrame, sector_map: dict = None) -> list:
                             "z_score":      round(z_score, 2),
                             "severity":     "HIGH" if abs(z_score) > 2 else "MEDIUM",
                             "insight": (
-                                f"{row['DENOM_CIA']}: {metric.replace('_pct', '')} "
+                                f"{row['company_id']}: {metric.replace('_pct', '')} "
                                 f"at {row[metric]:.1f}% is significantly {position} "
                                 f"the {sector_name} peer average of {mean_val:.1f}% "
                                 f"(z-score: {z_score:+.1f}). "
@@ -486,8 +488,8 @@ def detect_anomalies(df: pd.DataFrame) -> list:
     metric_cols = ["Gross_Margin_pct", "EBIT_Margin_pct", "COGS_pct_Revenue"]
     available_metrics = [col for col in metric_cols if col in df.columns]
 
-    for company in df["DENOM_CIA"].unique():
-        comp = df[df["DENOM_CIA"] == company].sort_values("DT_REFER").reset_index(drop=True)
+    for company in df["company_id"].unique():
+        comp = df[df["company_id"] == company].sort_values("period_date").reset_index(drop=True)
 
         for metric in available_metrics:
             series = comp[metric].dropna()
@@ -529,7 +531,7 @@ def detect_anomalies(df: pd.DataFrame) -> list:
                     "company":        company,
                     "metric":         metric,
                     "pattern":        "Statistical anomaly",
-                    "period":         row["DT_REFER"],
+                    "period":         row["period_date"],
                     "value":          round(value, 2),
                     "normal_range":   f"{round(lower, 1)} - {round(upper, 1)}",
                     "anomaly_type":   anomaly_type,
@@ -561,19 +563,19 @@ def analyze_yoy_comparison(
     """
     findings = []
 
-    if df.empty or "DT_REFER" not in df.columns:
+    if df.empty or "period_date" not in df.columns:
         return findings
 
     df = df.copy()
-    df["DT_REFER_dt"] = pd.to_datetime(df["DT_REFER"], errors="coerce")
+    df["DT_REFER_dt"] = pd.to_datetime(df["period_date"], errors="coerce")
     df["year"]    = df["DT_REFER_dt"].dt.year
     df["quarter"] = df["DT_REFER_dt"].dt.quarter
 
     metric_cols = ["Gross_Margin_pct", "EBIT_Margin_pct"]
     available   = [c for c in metric_cols if c in df.columns]
 
-    for company in df["DENOM_CIA"].unique():
-        comp = df[df["DENOM_CIA"] == company].copy()
+    for company in df["company_id"].unique():
+        comp = df[df["company_id"] == company].copy()
 
         for metric in available:
             company_metric_findings = []
@@ -794,9 +796,9 @@ def _enrich_findings_with_dq(findings: list, df: pd.DataFrame) -> None:
 
         # Look up the matching df row for is_standalone
         is_standalone = True
-        if "DT_REFER" in df.columns and "DENOM_CIA" in df.columns:
-            mask = (df["DENOM_CIA"] == company) & (
-                pd.to_datetime(df["DT_REFER"], errors="coerce") == finding_dt
+        if "period_date" in df.columns and "DENOM_CIA" in df.columns:
+            mask = (df["company_id"] == company) & (
+                pd.to_datetime(df["period_date"], errors="coerce") == finding_dt
             )
             matched = df[mask]
             if not matched.empty and "is_standalone" in matched.columns:
@@ -865,7 +867,7 @@ def quality_scan(df: pd.DataFrame) -> dict:
     # Build flags list — one entry per metric violation per row
     flags = []
     for _, row in df[flagged_mask].iterrows():
-        period     = str(row.get("DT_REFER", ""))
+        period     = str(row.get("period_date", ""))
         confidence = str(row.get("_row_confidence", "MEDIUM"))
         raw_flags  = str(row.get("_plausibility_flags", ""))
         for issue in raw_flags.split(";"):

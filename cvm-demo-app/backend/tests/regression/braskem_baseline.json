@@ -1,0 +1,356 @@
+{
+  "company_name": "BRASKEM S.A.",
+  "snapshot_date": "2026-04-03",
+  "snapshot_branch": "master (pre-sprint1-refactor)",
+  "step4_data": {
+    "metrics_computed": [
+      "Gross_Margin_pct",
+      "EBIT_Margin_pct",
+      "COGS_pct_Revenue",
+      "Revenue_YoY_pct",
+      "COGS_YoY_pct",
+      "EBITDA_Margin_pct"
+    ],
+    "periods": 6,
+    "time_series": [
+      {
+        "period": "2020-12-31",
+        "Gross_Margin_pct": 19.15,
+        "EBIT_Margin_pct": -0.12,
+        "EBITDA_Margin_pct": 6.79,
+        "COGS_pct_Revenue": 80.85,
+        "SGA_pct_Revenue": 3.71,
+        "Revenue_YoY_pct": null,
+        "COGS_YoY_pct": null,
+        "revenue_abs": 58543494.0,
+        "cogs_abs": 47331414.0
+      },
+      {
+        "period": "2021-12-31",
+        "Gross_Margin_pct": 30.35,
+        "EBIT_Margin_pct": 24.66,
+        "EBITDA_Margin_pct": 28.61,
+        "COGS_pct_Revenue": 69.65,
+        "SGA_pct_Revenue": 2.67,
+        "Revenue_YoY_pct": 80.4,
+        "COGS_YoY_pct": 55.4,
+        "revenue_abs": 105625201.0,
+        "cogs_abs": 73568231.0
+      },
+      {
+        "period": "2022-12-31",
+        "Gross_Margin_pct": 11.77,
+        "EBIT_Margin_pct": 4.43,
+        "EBITDA_Margin_pct": 9.33,
+        "COGS_pct_Revenue": 88.23,
+        "SGA_pct_Revenue": 3.25,
+        "Revenue_YoY_pct": -8.6,
+        "COGS_YoY_pct": 15.8,
+        "revenue_abs": 96519284.0,
+        "cogs_abs": 85160548.0
+      },
+      {
+        "period": "2023-12-31",
+        "Gross_Margin_pct": 4.28,
+        "EBIT_Margin_pct": -3.96,
+        "EBITDA_Margin_pct": 3.42,
+        "COGS_pct_Revenue": 95.72,
+        "SGA_pct_Revenue": 4.05,
+        "Revenue_YoY_pct": -26.9,
+        "COGS_YoY_pct": -20.7,
+        "revenue_abs": 70569000.0,
+        "cogs_abs": 67548000.0
+      },
+      {
+        "period": "2024-12-31",
+        "Gross_Margin_pct": 7.75,
+        "EBIT_Margin_pct": -1.39,
+        "EBITDA_Margin_pct": 5.0,
+        "COGS_pct_Revenue": 92.25,
+        "SGA_pct_Revenue": 4.01,
+        "Revenue_YoY_pct": 9.7,
+        "COGS_YoY_pct": 5.7,
+        "revenue_abs": 77411000.0,
+        "cogs_abs": 71414000.0
+      },
+      {
+        "period": "2025-12-31",
+        "Gross_Margin_pct": 2.2,
+        "EBIT_Margin_pct": -2.56,
+        "EBITDA_Margin_pct": 4.05,
+        "COGS_pct_Revenue": 97.8,
+        "SGA_pct_Revenue": 4.35,
+        "Revenue_YoY_pct": -8.6,
+        "COGS_YoY_pct": -3.2,
+        "revenue_abs": 70717000.0,
+        "cogs_abs": 69161000.0
+      }
+    ],
+    "source": "live"
+  },
+  "step5_data": {
+    "total_data_points": 24,
+    "clean": 24,
+    "flagged": 0,
+    "quality_score": 1.0,
+    "flags": [],
+    "source": "live"
+  },
+  "step6_data": {
+    "algorithms_run": [
+      "margin_trends",
+      "cost_composition_drift",
+      "revenue_cost_decoupling",
+      "peer_comparison",
+      "statistical_anomaly",
+      "yoy_quarter_comparison"
+    ],
+    "raw_findings": 8,
+    "findings": [
+      {
+        "id": "F001",
+        "company": "BRASKEM S.A.",
+        "pattern": "Margin compression",
+        "severity": "MEDIUM",
+        "metric": "Gross_Margin_pct",
+        "confidence": "HIGH",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "BRASKEM S.A.: Gross_Margin shows compression of 4.6pp/year. Current: 2.2%, Historical avg: 12.6%. Monitor closely.",
+        "period": "",
+        "estimated_impact": {
+          "value_brl": 3231766.9000000004,
+          "formatted": "~R$ 3 mn",
+          "basis": "4.6pp/year compression × current annual revenue",
+          "caveat": "Annual run-rate estimate — actual impact depends on revenue trajectory"
+        },
+        "data_points": {
+          "annual_change_pp": -4.57,
+          "current_level": 2.2,
+          "volatility": 10.58,
+          "periods_analyzed": 6
+        }
+      },
+      {
+        "id": "F002",
+        "company": "BRASKEM S.A.",
+        "pattern": "Margin compression",
+        "severity": "MEDIUM",
+        "metric": "EBIT_Margin_pct",
+        "confidence": "MEDIUM",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "BRASKEM S.A.: EBIT_Margin shows compression of 2.8pp/year. Current: -2.6%, Historical avg: 3.5%. Monitor closely.",
+        "period": "",
+        "estimated_impact": {
+          "value_brl": 1994219.4,
+          "formatted": "~R$ 2 mn",
+          "basis": "2.8pp/year compression × current annual revenue",
+          "caveat": "Annual run-rate estimate — actual impact depends on revenue trajectory"
+        },
+        "data_points": {
+          "annual_change_pp": -2.82,
+          "current_level": -2.56,
+          "volatility": 10.75,
+          "periods_analyzed": 6
+        }
+      },
+      {
+        "id": "F003",
+        "company": "BRASKEM S.A.",
+        "pattern": "Cost composition drift",
+        "severity": "HIGH",
+        "metric": "COGS_pct_Revenue",
+        "confidence": "HIGH",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "BRASKEM S.A.: COGS burden shifted from 79.6% to 95.3% of revenue — a 15.7pp deterioration. This structural shift may indicate changes in input costs, product mix, or operational efficiency.",
+        "period": "",
+        "estimated_impact": {
+          "value_brl": 11088425.6,
+          "formatted": "~R$ 11 mn",
+          "basis": "15.7pp COGS drift × current annual revenue",
+          "caveat": "Order of magnitude estimate — does not isolate volume, mix, or price effects"
+        },
+        "data_points": {
+          "first_half_avg": 79.58,
+          "second_half_avg": 95.26,
+          "shift_pp": 15.68
+        }
+      },
+      {
+        "id": "F004",
+        "company": "BRASKEM S.A.",
+        "pattern": "Revenue-cost decoupling",
+        "severity": "HIGH",
+        "metric": "",
+        "confidence": "HIGH",
+        "anomaly_type": "LOW_CONFIDENCE_SIGNAL",
+        "description": "BRASKEM S.A. (2021-12-31): Revenue changed +80.4% but COGS changed +55.4% — a 25.0pp divergence. Revenue outpaced COGS (margin expansion). Investigate: product mix shift, input cost changes, or one-time items.",
+        "period": "2021-12-31",
+        "estimated_impact": null,
+        "data_points": {
+          "period": "2021-12-31",
+          "revenue_change_pct": 80.4,
+          "cogs_change_pct": 55.4,
+          "divergence_pp": -25.0
+        }
+      },
+      {
+        "id": "F005",
+        "company": "BRASKEM S.A.",
+        "pattern": "Revenue-cost decoupling",
+        "severity": "HIGH",
+        "metric": "",
+        "confidence": "HIGH",
+        "anomaly_type": "LOW_CONFIDENCE_SIGNAL",
+        "description": "BRASKEM S.A. (2022-12-31): Revenue changed -8.6% but COGS changed +15.8% — a 24.4pp divergence. COGS grew faster than revenue (margin pressure). Investigate: product mix shift, input cost changes, or one-time items.",
+        "period": "2022-12-31",
+        "estimated_impact": {
+          "value_brl": 17254948.0,
+          "formatted": "~R$ 17 mn",
+          "basis": "24.4pp cost-revenue divergence × annual revenue",
+          "caveat": "Single-period estimate — may include one-time items"
+        },
+        "data_points": {
+          "period": "2022-12-31",
+          "revenue_change_pct": -8.6,
+          "cogs_change_pct": 15.8,
+          "divergence_pp": 24.4
+        }
+      },
+      {
+        "id": "F006",
+        "company": "BRASKEM S.A.",
+        "pattern": "Statistical anomaly",
+        "severity": "HIGH",
+        "metric": "EBIT_Margin_pct",
+        "confidence": "HIGH",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "BRASKEM S.A. (2021-03-31): EBIT_Margin at 29.7% is outside the normal range (-17.7% to 20.4%). Investigate one-time items, impairments, or extraordinary events in this period.",
+        "period": "2021-03-31",
+        "estimated_impact": null,
+        "data_points": {
+          "period": "2021-03-31",
+          "value": 29.7,
+          "normal_range": "-17.7 - 20.4"
+        }
+      },
+      {
+        "id": "F007",
+        "company": "BRASKEM S.A.",
+        "pattern": "Statistical anomaly",
+        "severity": "HIGH",
+        "metric": "EBIT_Margin_pct",
+        "confidence": "HIGH",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "BRASKEM S.A. (2021-06-30): EBIT_Margin at 34.3% is outside the normal range (-17.7% to 20.4%). Investigate one-time items, impairments, or extraordinary events in this period.",
+        "period": "2021-06-30",
+        "estimated_impact": null,
+        "data_points": {
+          "period": "2021-06-30",
+          "value": 34.3,
+          "normal_range": "-17.7 - 20.4"
+        }
+      },
+      {
+        "id": "F008",
+        "company": "BRASKEM S.A.",
+        "pattern": "YoY quarter comparison",
+        "severity": "HIGH",
+        "metric": "EBIT_Margin_pct",
+        "confidence": "MEDIUM",
+        "anomaly_type": "LOW_CONFIDENCE_SIGNAL",
+        "description": "BRASKEM S.A.: EBIT_Margin in Q2 2022 deteriorated by 27.8pp vs Q2 2021 (now 6.5%). Same-quarter comparison controls for seasonality.",
+        "period": "Q2 2022",
+        "estimated_impact": {
+          "value_brl": 4913063.574999999,
+          "formatted": "~R$ 5 mn",
+          "basis": "27.8pp YoY change × estimated quarterly revenue",
+          "caveat": "Quarterly estimate — annualize with caution"
+        },
+        "data_points": {
+          "period": "Q2 2022",
+          "yoy_change_pp": -27.79,
+          "current_value": 6.51
+        }
+      }
+    ],
+    "finding_categories": {
+      "core": [
+        "F001",
+        "F002",
+        "F003"
+      ],
+      "supporting": [
+        "F005",
+        "F008"
+      ],
+      "contextual": [
+        "F004"
+      ],
+      "anomalies": [
+        "F006",
+        "F007"
+      ]
+    },
+    "composite_signals": [
+      {
+        "company": "BRASKEM S.A.",
+        "period": "multiple periods",
+        "analysis_window": "2020-03-31 to 2025-12-31",
+        "composite_signal_type": "STRUCTURAL_COMPETITIVENESS_ISSUE",
+        "severity": "HIGH",
+        "confidence": "HIGH",
+        "supporting_signals": [
+          "Margin compression",
+          "Cost composition drift"
+        ],
+        "signal_count": 3,
+        "explanation": "BRASKEM S.A. shows rising COGS burden (+15.7pp shift) alongside margin compression (-4.6pp/year). The simultaneous cost increase and margin deterioration points to a structural competitiveness problem rather than a one-time event.",
+        "recommended_investigation_angle": "Benchmark cost structure vs peers at sub-account level. Decompose COGS into raw materials, labor, and overhead to identify the primary driver."
+      },
+      {
+        "company": "BRASKEM S.A.",
+        "period": "2022-12-31",
+        "analysis_window": "2020-03-31 to 2025-12-31",
+        "composite_signal_type": "NEGATIVE_OPERATING_LEVERAGE",
+        "severity": "HIGH",
+        "confidence": "HIGH",
+        "supporting_signals": [
+          "Margin compression",
+          "Revenue-cost decoupling"
+        ],
+        "signal_count": 3,
+        "explanation": "BRASKEM S.A. exhibits negative operating leverage: revenue changed -8.6% while COGS changed +15.8% in the worst period, amplifying margin compression. Fixed cost structure is not providing the expected leverage on revenue growth.",
+        "recommended_investigation_angle": "Decompose COGS into fixed vs variable components. Assess whether fixed cost absorption is declining due to volume or utilization changes."
+      }
+    ],
+    "risk_score": 71.2,
+    "risk_level": "HIGH",
+    "risk_scores": [
+      {
+        "company": "BRASKEM S.A.",
+        "risk_score": 71.2,
+        "priority": "HIGH",
+        "top_risk_drivers": [
+          "STRUCTURAL_COMPETITIVENESS_ISSUE",
+          "NEGATIVE_OPERATING_LEVERAGE"
+        ],
+        "score_breakdown": {
+          "magnitude": 20.0,
+          "persistence": 13.8,
+          "confirmation": 20,
+          "peer_gap": 0.0,
+          "data_confidence": 17.5
+        },
+        "composite_signal_count": 2,
+        "composite_signal_types": [
+          "STRUCTURAL_COMPETITIVENESS_ISSUE",
+          "NEGATIVE_OPERATING_LEVERAGE"
+        ],
+        "key_supporting_findings": 8,
+        "executive_summary": "BRASKEM S.A. is rated HIGH risk (score: 71.2/100). Primary concerns: STRUCTURAL_COMPETITIVENESS_ISSUE, NEGATIVE_OPERATING_LEVERAGE."
+      }
+    ],
+    "findings_enriched": 8,
+    "source": "live"
+  }
+}

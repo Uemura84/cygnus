@@ -1,0 +1,388 @@
+{
+  "company_name": "VALE S.A.",
+  "snapshot_date": "2026-04-03",
+  "snapshot_branch": "master (pre-sprint1-refactor)",
+  "step4_data": {
+    "metrics_computed": [
+      "Gross_Margin_pct",
+      "EBIT_Margin_pct",
+      "COGS_pct_Revenue",
+      "Revenue_YoY_pct",
+      "COGS_YoY_pct",
+      "EBITDA_Margin_pct"
+    ],
+    "periods": 6,
+    "time_series": [
+      {
+        "period": "2020-12-31",
+        "Gross_Margin_pct": 52.73,
+        "EBIT_Margin_pct": 24.97,
+        "EBITDA_Margin_pct": 32.97,
+        "COGS_pct_Revenue": 47.27,
+        "SGA_pct_Revenue": 1.37,
+        "Revenue_YoY_pct": null,
+        "COGS_YoY_pct": null,
+        "revenue_abs": 208528759.0,
+        "cogs_abs": 98567494.0
+      },
+      {
+        "period": "2021-12-31",
+        "Gross_Margin_pct": 60.05,
+        "EBIT_Margin_pct": 48.15,
+        "EBITDA_Margin_pct": 53.73,
+        "COGS_pct_Revenue": 39.95,
+        "SGA_pct_Revenue": 0.89,
+        "Revenue_YoY_pct": 40.8,
+        "COGS_YoY_pct": 19.0,
+        "revenue_abs": 293524000.0,
+        "cogs_abs": 117267000.0
+      },
+      {
+        "period": "2022-12-31",
+        "Gross_Margin_pct": 45.17,
+        "EBIT_Margin_pct": 39.88,
+        "EBITDA_Margin_pct": 47.11,
+        "COGS_pct_Revenue": 54.83,
+        "SGA_pct_Revenue": 1.17,
+        "Revenue_YoY_pct": -22.8,
+        "COGS_YoY_pct": 5.9,
+        "revenue_abs": 226508000.0,
+        "cogs_abs": 124195000.0
+      },
+      {
+        "period": "2023-12-31",
+        "Gross_Margin_pct": 42.32,
+        "EBIT_Margin_pct": 31.37,
+        "EBITDA_Margin_pct": 38.72,
+        "COGS_pct_Revenue": 57.68,
+        "SGA_pct_Revenue": 1.33,
+        "Revenue_YoY_pct": -8.1,
+        "COGS_YoY_pct": -3.4,
+        "revenue_abs": 208066000.0,
+        "cogs_abs": 120016000.0
+      },
+      {
+        "period": "2024-12-31",
+        "Gross_Margin_pct": 36.25,
+        "EBIT_Margin_pct": 26.92,
+        "EBITDA_Margin_pct": 34.94,
+        "COGS_pct_Revenue": 63.75,
+        "SGA_pct_Revenue": 1.65,
+        "Revenue_YoY_pct": -1.0,
+        "COGS_YoY_pct": 9.4,
+        "revenue_abs": 206005000.0,
+        "cogs_abs": 131318000.0
+      },
+      {
+        "period": "2025-12-31",
+        "Gross_Margin_pct": 34.98,
+        "EBIT_Margin_pct": 14.97,
+        "EBITDA_Margin_pct": 23.07,
+        "COGS_pct_Revenue": 65.02,
+        "SGA_pct_Revenue": 1.67,
+        "Revenue_YoY_pct": 3.7,
+        "COGS_YoY_pct": 5.8,
+        "revenue_abs": 213595000.0,
+        "cogs_abs": 138887000.0
+      }
+    ],
+    "source": "live"
+  },
+  "step5_data": {
+    "total_data_points": 24,
+    "clean": 23,
+    "flagged": 1,
+    "quality_score": 0.9583,
+    "flags": [
+      {
+        "period": "2022-03-31",
+        "metric": "EBIT_Margin_pct",
+        "value": "62.6",
+        "flag": "DATA_ISSUE",
+        "reason": "outside [-50.0,60.0]",
+        "confidence": "MEDIUM"
+      }
+    ],
+    "source": "live"
+  },
+  "step6_data": {
+    "algorithms_run": [
+      "margin_trends",
+      "cost_composition_drift",
+      "revenue_cost_decoupling",
+      "peer_comparison",
+      "statistical_anomaly",
+      "yoy_quarter_comparison"
+    ],
+    "raw_findings": 9,
+    "findings": [
+      {
+        "id": "F001",
+        "company": "VALE S.A.",
+        "pattern": "Margin compression",
+        "severity": "MEDIUM",
+        "metric": "Gross_Margin_pct",
+        "confidence": "HIGH",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "VALE S.A.: Gross_Margin shows compression of 4.7pp/year. Current: 35.0%, Historical avg: 45.2%. Monitor closely.",
+        "period": "",
+        "estimated_impact": {
+          "value_brl": 9953527.0,
+          "formatted": "~R$ 10 mn",
+          "basis": "4.7pp/year compression × current annual revenue",
+          "caveat": "Annual run-rate estimate — actual impact depends on revenue trajectory"
+        },
+        "data_points": {
+          "annual_change_pp": -4.66,
+          "current_level": 34.98,
+          "volatility": 9.7,
+          "periods_analyzed": 6
+        }
+      },
+      {
+        "id": "F002",
+        "company": "VALE S.A.",
+        "pattern": "Margin compression",
+        "severity": "MEDIUM",
+        "metric": "EBIT_Margin_pct",
+        "confidence": "MEDIUM",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "VALE S.A.: EBIT_Margin shows compression of 3.5pp/year. Current: 15.0%, Historical avg: 31.0%. Monitor closely.",
+        "period": "",
+        "estimated_impact": {
+          "value_brl": 7454465.5,
+          "formatted": "~R$ 7 mn",
+          "basis": "3.5pp/year compression × current annual revenue",
+          "caveat": "Annual run-rate estimate — actual impact depends on revenue trajectory"
+        },
+        "data_points": {
+          "annual_change_pp": -3.49,
+          "current_level": 14.97,
+          "volatility": 11.69,
+          "periods_analyzed": 6
+        }
+      },
+      {
+        "id": "F003",
+        "company": "VALE S.A.",
+        "pattern": "Cost composition drift",
+        "severity": "HIGH",
+        "metric": "COGS_pct_Revenue",
+        "confidence": "HIGH",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "VALE S.A.: COGS burden shifted from 47.4% to 62.1% of revenue — a 14.8pp deterioration. This structural shift may indicate changes in input costs, product mix, or operational efficiency.",
+        "period": "",
+        "estimated_impact": {
+          "value_brl": 31612060.000000004,
+          "formatted": "~R$ 32 mn",
+          "basis": "14.8pp COGS drift × current annual revenue",
+          "caveat": "Order of magnitude estimate — does not isolate volume, mix, or price effects"
+        },
+        "data_points": {
+          "first_half_avg": 47.35,
+          "second_half_avg": 62.15,
+          "shift_pp": 14.8
+        }
+      },
+      {
+        "id": "F004",
+        "company": "VALE S.A.",
+        "pattern": "Revenue-cost decoupling",
+        "severity": "HIGH",
+        "metric": "",
+        "confidence": "HIGH",
+        "anomaly_type": "LOW_CONFIDENCE_SIGNAL",
+        "description": "VALE S.A. (2022-12-31): Revenue changed -22.8% but COGS changed +5.9% — a 28.7pp divergence. COGS grew faster than revenue (margin pressure). Investigate: product mix shift, input cost changes, or one-time items.",
+        "period": "2022-12-31",
+        "estimated_impact": {
+          "value_brl": 61301764.99999999,
+          "formatted": "~R$ 61 mn",
+          "basis": "28.7pp cost-revenue divergence × annual revenue",
+          "caveat": "Single-period estimate — may include one-time items"
+        },
+        "data_points": {
+          "period": "2022-12-31",
+          "revenue_change_pct": -22.8,
+          "cogs_change_pct": 5.9,
+          "divergence_pp": 28.7
+        }
+      },
+      {
+        "id": "F005",
+        "company": "VALE S.A.",
+        "pattern": "Revenue-cost decoupling",
+        "severity": "HIGH",
+        "metric": "",
+        "confidence": "HIGH",
+        "anomaly_type": "LOW_CONFIDENCE_SIGNAL",
+        "description": "VALE S.A. (2021-12-31): Revenue changed +40.8% but COGS changed +19.0% — a 21.8pp divergence. Revenue outpaced COGS (margin expansion). Investigate: product mix shift, input cost changes, or one-time items.",
+        "period": "2021-12-31",
+        "estimated_impact": null,
+        "data_points": {
+          "period": "2021-12-31",
+          "revenue_change_pct": 40.8,
+          "cogs_change_pct": 19.0,
+          "divergence_pp": -21.8
+        }
+      },
+      {
+        "id": "F006",
+        "company": "VALE S.A.",
+        "pattern": "Statistical anomaly",
+        "severity": "HIGH",
+        "metric": "EBIT_Margin_pct",
+        "confidence": "MEDIUM",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "VALE S.A. (2021-03-31): EBIT_Margin at 58.2% is outside the normal range (11.7% to 56.8%). Investigate one-time items, impairments, or extraordinary events in this period.",
+        "period": "2021-03-31",
+        "estimated_impact": null,
+        "data_points": {
+          "period": "2021-03-31",
+          "value": 58.17,
+          "normal_range": "11.7 - 56.8"
+        }
+      },
+      {
+        "id": "F007",
+        "company": "VALE S.A.",
+        "pattern": "Statistical anomaly",
+        "severity": "HIGH",
+        "metric": "EBIT_Margin_pct",
+        "confidence": "MEDIUM",
+        "anomaly_type": "ACCOUNTING_EVENT",
+        "description": "VALE S.A. (2022-03-31): EBIT_Margin at 62.6% is outside the normal range (11.7% to 56.8%). Investigate one-time items, impairments, or extraordinary events in this period.",
+        "period": "2022-03-31",
+        "estimated_impact": null,
+        "data_points": {
+          "period": "2022-03-31",
+          "value": 62.62,
+          "normal_range": "11.7 - 56.8"
+        }
+      },
+      {
+        "id": "F008",
+        "company": "VALE S.A.",
+        "pattern": "YoY quarter comparison",
+        "severity": "HIGH",
+        "metric": "EBIT_Margin_pct",
+        "confidence": "HIGH",
+        "anomaly_type": "VALID_SIGNAL",
+        "description": "VALE S.A.: EBIT_Margin in Q2 2021 improved by 35.2pp vs Q2 2020 (now 55.8%). Same-quarter comparison controls for seasonality.",
+        "period": "Q2 2021",
+        "estimated_impact": {
+          "value_brl": 18791020.125,
+          "formatted": "~R$ 19 mn",
+          "basis": "35.2pp YoY change × estimated quarterly revenue",
+          "caveat": "Quarterly estimate — annualize with caution"
+        },
+        "data_points": {
+          "period": "Q2 2021",
+          "yoy_change_pp": 35.19,
+          "current_value": 55.77
+        }
+      },
+      {
+        "id": "F009",
+        "company": "VALE S.A.",
+        "pattern": "YoY quarter comparison",
+        "severity": "HIGH",
+        "metric": "EBIT_Margin_pct",
+        "confidence": "MEDIUM",
+        "anomaly_type": "LOW_CONFIDENCE_SIGNAL",
+        "description": "VALE S.A.: EBIT_Margin in Q1 2023 deteriorated by 29.2pp vs Q1 2022 (now 33.5%). Same-quarter comparison controls for seasonality.",
+        "period": "Q1 2023",
+        "estimated_impact": {
+          "value_brl": 15571075.500000002,
+          "formatted": "~R$ 16 mn",
+          "basis": "29.2pp YoY change × estimated quarterly revenue",
+          "caveat": "Quarterly estimate — annualize with caution"
+        },
+        "data_points": {
+          "period": "Q1 2023",
+          "yoy_change_pp": -29.16,
+          "current_value": 33.46
+        }
+      }
+    ],
+    "finding_categories": {
+      "core": [
+        "F001",
+        "F002",
+        "F003"
+      ],
+      "supporting": [
+        "F004",
+        "F008",
+        "F009"
+      ],
+      "contextual": [
+        "F005"
+      ],
+      "anomalies": [
+        "F006",
+        "F007"
+      ]
+    },
+    "composite_signals": [
+      {
+        "company": "VALE S.A.",
+        "period": "multiple periods",
+        "analysis_window": "2020-03-31 to 2025-12-31",
+        "composite_signal_type": "STRUCTURAL_COMPETITIVENESS_ISSUE",
+        "severity": "HIGH",
+        "confidence": "HIGH",
+        "supporting_signals": [
+          "Margin compression",
+          "Cost composition drift"
+        ],
+        "signal_count": 3,
+        "explanation": "VALE S.A. shows rising COGS burden (+14.8pp shift) alongside margin compression (-4.7pp/year). The simultaneous cost increase and margin deterioration points to a structural competitiveness problem rather than a one-time event.",
+        "recommended_investigation_angle": "Benchmark cost structure vs peers at sub-account level. Decompose COGS into raw materials, labor, and overhead to identify the primary driver."
+      },
+      {
+        "company": "VALE S.A.",
+        "period": "2022-12-31",
+        "analysis_window": "2020-03-31 to 2025-12-31",
+        "composite_signal_type": "NEGATIVE_OPERATING_LEVERAGE",
+        "severity": "HIGH",
+        "confidence": "HIGH",
+        "supporting_signals": [
+          "Margin compression",
+          "Revenue-cost decoupling"
+        ],
+        "signal_count": 3,
+        "explanation": "VALE S.A. exhibits negative operating leverage: revenue changed -22.8% while COGS changed +5.9% in the worst period, amplifying margin compression. Fixed cost structure is not providing the expected leverage on revenue growth.",
+        "recommended_investigation_angle": "Decompose COGS into fixed vs variable components. Assess whether fixed cost absorption is declining due to volume or utilization changes."
+      }
+    ],
+    "risk_score": 63.9,
+    "risk_level": "HIGH",
+    "risk_scores": [
+      {
+        "company": "VALE S.A.",
+        "risk_score": 63.9,
+        "priority": "HIGH",
+        "top_risk_drivers": [
+          "STRUCTURAL_COMPETITIVENESS_ISSUE",
+          "NEGATIVE_OPERATING_LEVERAGE"
+        ],
+        "score_breakdown": {
+          "magnitude": 20.0,
+          "persistence": 8.3,
+          "confirmation": 20,
+          "peer_gap": 0.0,
+          "data_confidence": 15.6
+        },
+        "composite_signal_count": 2,
+        "composite_signal_types": [
+          "STRUCTURAL_COMPETITIVENESS_ISSUE",
+          "NEGATIVE_OPERATING_LEVERAGE"
+        ],
+        "key_supporting_findings": 9,
+        "executive_summary": "VALE S.A. is rated HIGH risk (score: 63.9/100). Primary concerns: STRUCTURAL_COMPETITIVENESS_ISSUE, NEGATIVE_OPERATING_LEVERAGE."
+      }
+    ],
+    "findings_enriched": 9,
+    "source": "live"
+  }
+}

@@ -11,17 +11,21 @@ def _build_time_series(pivot: pd.DataFrame, company_name: str) -> list:
     """Extract annual (DFP) time series records for the target company."""
     company_key = company_name.split()[0].upper()
 
+    # Support both common model column names and legacy CVM names
+    id_col   = "company_id" if "company_id" in pivot.columns else "DENOM_CIA"
+    date_col = "period_date" if "period_date" in pivot.columns else "DT_REFER"
+
     # Filter to target company, DFP rows only, sorted by date
     comp = pivot[
-        pivot["DENOM_CIA"].str.upper().str.contains(company_key, na=False) &
+        pivot[id_col].str.upper().str.contains(company_key, na=False) &
         (pivot["_doc_type"] == "DFP")
-    ].sort_values("DT_REFER").copy()
+    ].sort_values(date_col).copy()
 
     if comp.empty:
         # Fall back to all doc types if no DFP rows
         comp = pivot[
-            pivot["DENOM_CIA"].str.upper().str.contains(company_key, na=False)
-        ].sort_values("DT_REFER").copy()
+            pivot[id_col].str.upper().str.contains(company_key, na=False)
+        ].sort_values(date_col).copy()
 
     metric_cols = [
         "Gross_Margin_pct",
@@ -32,21 +36,24 @@ def _build_time_series(pivot: pd.DataFrame, company_name: str) -> list:
     ]
     available = [c for c in metric_cols if c in comp.columns]
 
-    revenue_col = "Receita de Venda de Bens e/ou Serviços"
+    # Common model column names (revenue/cogs always present after Step 3 refactor)
+    revenue_col = "revenue" if "revenue" in comp.columns else "Receita de Venda de Bens e/ou Serviços"
+    cogs_col    = "cogs"    if "cogs"    in comp.columns else "Custo dos Bens e/ou Serviços Vendidos"
+    # cogs column stores absolute values in common model; legacy stores negative values
+    cogs_is_abs = (cogs_col == "cogs")
 
     records = []
     prev_revenue = None
     prev_cogs    = None
 
     for _, row in comp.iterrows():
-        record = {"period": str(row["DT_REFER"])}
+        record = {"period": str(row[date_col])}
 
         for col in available:
             val = row.get(col)
             record[col] = round(float(val), 2) if pd.notna(val) else None
 
         # YoY revenue and COGS growth
-        cogs_col = "Custo dos Bens e/ou Serviços Vendidos"
         rev_val  = row.get(revenue_col)
         cogs_val = row.get(cogs_col)
 
@@ -56,18 +63,19 @@ def _build_time_series(pivot: pd.DataFrame, company_name: str) -> list:
             record["Revenue_YoY_pct"] = None
 
         if prev_cogs is not None and pd.notna(cogs_val) and prev_cogs != 0:
-            record["COGS_YoY_pct"] = round((abs(float(cogs_val)) - abs(prev_cogs)) / abs(prev_cogs) * 100, 1)
+            cogs_abs_val = float(cogs_val) if cogs_is_abs else abs(float(cogs_val))
+            record["COGS_YoY_pct"] = round((cogs_abs_val - abs(prev_cogs)) / abs(prev_cogs) * 100, 1)
         else:
             record["COGS_YoY_pct"] = None
 
         # Absolute values for materiality layer (BRL, in thousands)
         record["revenue_abs"] = float(rev_val) if pd.notna(rev_val) else 0.0
-        record["cogs_abs"] = abs(float(cogs_val)) if pd.notna(cogs_val) else 0.0
+        record["cogs_abs"]    = (float(cogs_val) if cogs_is_abs else abs(float(cogs_val))) if pd.notna(cogs_val) else 0.0
 
         if pd.notna(rev_val):
             prev_revenue = float(rev_val)
         if pd.notna(cogs_val):
-            prev_cogs = float(cogs_val)
+            prev_cogs = float(cogs_val) if cogs_is_abs else abs(float(cogs_val))
 
         records.append(record)
 

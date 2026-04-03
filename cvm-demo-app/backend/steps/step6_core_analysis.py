@@ -11,17 +11,37 @@ from pipeline.enrichment import SECTOR_MAP
 from pipeline.materiality import estimate_impact
 
 
+def _normalize_df_columns(df: pd.DataFrame) -> None:
+    """Rename legacy CVM column names to common model names (in-place)."""
+    renames = {}
+    if "DENOM_CIA" in df.columns:
+        renames["DENOM_CIA"] = "company_id"
+    if "DT_REFER" in df.columns:
+        renames["DT_REFER"] = "period_date"
+    if renames:
+        df.rename(columns=renames, inplace=True)
+    revenue_pt = "Receita de Venda de Bens e/ou Serviços"
+    cogs_pt    = "Custo dos Bens e/ou Serviços Vendidos"
+    if revenue_pt in df.columns and "revenue" not in df.columns:
+        df["revenue"] = df[revenue_pt]
+    if cogs_pt in df.columns and "cogs" not in df.columns:
+        df["cogs"] = df[cogs_pt].abs()
+
+
 def _load_enriched_df(company_name: str, data_dir) -> pd.DataFrame:
     company_key = company_name.split()[0].lower()
     enriched_path = data_dir / "analysis" / f"enriched_{company_key}.csv"
     if enriched_path.exists():
-        return pd.read_csv(enriched_path, low_memory=False)
+        df = pd.read_csv(enriched_path, low_memory=False)
+        _normalize_df_columns(df)
+        return df
 
     metrics_path = data_dir / "analysis" / f"metrics_{company_key}.csv"
     pivot_path   = data_dir / "analysis" / f"pivot_{company_key}.csv"
     for path in (metrics_path, pivot_path):
         if path.exists():
             df = pd.read_csv(path, low_memory=False)
+            _normalize_df_columns(df)
             df = pattern_detector.validate_metric_ranges(df)
             df = pattern_detector.assign_data_confidence(df)
             return df

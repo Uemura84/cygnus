@@ -9,13 +9,23 @@ build_pivot(company_name, data_dir, years) -> (pivot_df, quality_stats)
 compute_metrics(company_name, data_dir, years) -> pd.DataFrame
     Step 4: reads pivot CSV, adds D&A from DFC ZIPs, computes EBITDA metrics.
     Saves data/analysis/metrics_{key}.csv.
+
+dataframe_to_company_financials(df, company_name, sector_map) -> CompanyFinancials
+    Converts the enriched pivot DataFrame (output of compute_metrics / build_pivot)
+    into the common CompanyFinancials data model. Called at the Step 3 boundary.
 """
 
 import json
+import sys
 import zipfile
+from datetime import date as date_type
 from pathlib import Path
 
 import pandas as pd
+
+# Resolve models package regardless of working directory
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from models import Company, Period, IncomeStatement, CompanyFinancials
 
 # Matching the original 01_download_and_parse.py constant exactly
 DRE_ACCOUNTS = {
@@ -231,6 +241,18 @@ def build_pivot(company_name: str, data_dir: Path, years: list) -> tuple:
         "itr_standalone_rows": itr_standalone_count,
     }
 
+    # ------------------------------------------------------------------
+    # Normalize to common data model column names
+    # ------------------------------------------------------------------
+    # Rename identifier columns to common model names.
+    # The Portuguese account columns are kept for backward-compat with Step 3's
+    # income statement display; revenue/cogs are added as English aliases.
+    pivot.rename(columns={"DENOM_CIA": "company_id", "DT_REFER": "period_date"}, inplace=True)
+    if revenue_col in pivot.columns:
+        pivot["revenue"] = pivot[revenue_col]
+    if cogs_col in pivot.columns:
+        pivot["cogs"] = pivot[cogs_col].abs()   # common model: positive absolute value
+
     # Save outputs
     pivot_path = analysis_dir / f"pivot_{company_key.lower()}.csv"
     pivot.to_csv(pivot_path, index=False, encoding="utf-8-sig")
@@ -263,8 +285,18 @@ def compute_metrics(company_name: str, data_dir: Path, years: list) -> pd.DataFr
 
     pivot = pd.read_csv(pivot_path, low_memory=False)
 
+    # Normalize legacy column names from old pivot CSVs (pre-common-model refactor)
+    if "DENOM_CIA" in pivot.columns:
+        pivot.rename(columns={"DENOM_CIA": "company_id", "DT_REFER": "period_date"}, inplace=True)
+        revenue_pt = DRE_ACCOUNTS.get("3.01")
+        cogs_pt    = DRE_ACCOUNTS.get("3.02")
+        if revenue_pt in pivot.columns and "revenue" not in pivot.columns:
+            pivot["revenue"] = pivot[revenue_pt]
+        if cogs_pt in pivot.columns and "cogs" not in pivot.columns:
+            pivot["cogs"] = pivot[cogs_pt].abs()
+
     ebit_col    = DRE_ACCOUNTS.get("3.05")
-    revenue_col = DRE_ACCOUNTS.get("3.01")
+    revenue_col = "revenue"
 
     # D&A from DFC (indirect method cash flow)
     # Look for depreciation/amortization line items to compute true EBITDA.
@@ -289,10 +321,12 @@ def compute_metrics(company_name: str, data_dir: Path, years: list) -> pd.DataFr
                 dfc_all[da_mask]
                 .groupby(["DENOM_CIA", "DT_REFER"])["VL_CONTA"]
                 .sum().abs().reset_index()
-                .rename(columns={"VL_CONTA": "DA_from_DFC"})
+                .rename(columns={"VL_CONTA": "DA_from_DFC",
+                                 "DENOM_CIA": "company_id",
+                                 "DT_REFER": "period_date"})
             )
             if not da.empty:
-                pivot = pivot.merge(da, on=["DENOM_CIA", "DT_REFER"], how="left")
+                pivot = pivot.merge(da, on=["company_id", "period_date"], how="left")
                 if ebit_col in pivot.columns:
                     pivot["EBITDA"] = pivot[ebit_col] + pivot["DA_from_DFC"].fillna(0)
                     if revenue_col in pivot.columns:
@@ -306,3 +340,162 @@ def compute_metrics(company_name: str, data_dir: Path, years: list) -> pd.DataFr
     pivot.to_csv(metrics_path, index=False, encoding="utf-8-sig")
 
     return pivot
+
+
+# =============================================================================
+# Common Data Model Adapter
+# =============================================================================
+
+# Maps source column names → IncomeStatement field names.
+# Includes both CVM Portuguese account names (legacy pivot CSVs) and
+# common model column names (post-refactor pivot CSVs).
+_CVM_TO_IS_FIELD = {
+    DRE_ACCOUNTS["3.01"]: "revenue",
+    DRE_ACCOUNTS["3.02"]: "cost_of_goods_sold",   # sign flip applied below
+    DRE_ACCOUNTS["3.03"]: "gross_profit",
+    DRE_ACCOUNTS["3.04.02"]: "sga_expenses",
+    DRE_ACCOUNTS["3.04.01"]: "selling_expenses",
+    DRE_ACCOUNTS["3.05"]: "ebit",
+    DRE_ACCOUNTS["3.06"]: "financial_result",
+    DRE_ACCOUNTS["3.07"]: "income_before_tax",
+    DRE_ACCOUNTS["3.08"]: "income_tax",
+    DRE_ACCOUNTS["3.11"]: "net_income",
+    # Common model aliases (post-refactor pivot CSVs)
+    "revenue": "revenue",
+    "cogs":    "cost_of_goods_sold",  # already absolute in common model
+}
+
+# COGS is reported as negative by CVM — common model stores as positive absolute value.
+_SIGN_FLIP_FIELDS = {"cost_of_goods_sold", "sga_expenses", "selling_expenses", "income_tax"}
+
+
+def dataframe_to_company_financials(
+    df: pd.DataFrame,
+    company_name: str,
+    sector_map: dict | None = None,
+) -> CompanyFinancials:
+    """Convert the enriched metrics DataFrame into CompanyFinancials.
+
+    Args:
+        df:           Output of compute_metrics() — one row per (company, period, doc_type).
+        company_name: Display name (e.g. "BRASKEM S.A.").
+        sector_map:   Optional SECTOR_MAP from enrichment.py for sector lookup.
+
+    Returns:
+        CompanyFinancials with income_statements populated, balance_sheets=None,
+        cash_flows=None (Sprint 2).
+    """
+    sector_map = sector_map or {}
+    company_key = company_name.split()[0].upper()
+
+    # Resolve sector
+    sector = None
+    sector_source = "unknown"
+    for fragment, sec in sector_map.items():
+        if fragment in company_key:
+            sector = sec
+            sector_source = "mapped"
+            break
+
+    # Determine company id — use CNPJ if available, else company_name
+    company_id = company_name
+    if "CNPJ_CIA" in df.columns:
+        cnpj_vals = df["CNPJ_CIA"].dropna()
+        if not cnpj_vals.empty:
+            company_id = str(cnpj_vals.iloc[0])
+
+    company_obj = Company(
+        id=company_id,
+        name=company_name,
+        source="cvm",
+        country="BR",
+        currency="BRL",
+        sector=sector,
+        sector_source=sector_source,
+    )
+
+    income_statements: list[IncomeStatement] = []
+
+    # Support both common model column names and legacy CVM column names
+    date_col = "period_date" if "period_date" in df.columns else "DT_REFER"
+
+    for _, row in df.iterrows():
+        # Build Period
+        dt_val = row.get(date_col)
+        if not dt_val:
+            continue
+        try:
+            period_date = pd.to_datetime(dt_val).date()
+        except Exception:
+            continue
+
+        doc_type = str(row.get("_doc_type", "DFP")).upper()
+        granularity = "annual" if doc_type == "DFP" else "quarterly"
+        is_standalone = bool(row.get("is_standalone", True))
+        fiscal_quarter = None
+        if granularity == "quarterly":
+            # Determine quarter from month of period_date
+            month_to_q = {3: 1, 6: 2, 9: 3, 12: 4}
+            fiscal_quarter = month_to_q.get(period_date.month)
+
+        period = Period(
+            date=period_date,
+            granularity=granularity,
+            fiscal_year=period_date.year,
+            fiscal_quarter=fiscal_quarter,
+            is_standalone=is_standalone,
+            filing_type=doc_type,
+        )
+
+        # Build IncomeStatement kwargs
+        kwargs: dict = {"company_id": company_id, "period": period}
+
+        for cvm_col, field_name in _CVM_TO_IS_FIELD.items():
+            val = row.get(cvm_col)
+            if val is not None and pd.notna(val):
+                fval = float(val)
+                if field_name in _SIGN_FLIP_FIELDS:
+                    fval = abs(fval)
+                kwargs[field_name] = fval
+
+        # D&A from DFC (stored in DA_from_DFC column by compute_metrics)
+        da_val = row.get("DA_from_DFC")
+        if da_val is not None and pd.notna(da_val):
+            kwargs["depreciation_amortization"] = abs(float(da_val))
+
+        # EBITDA
+        ebitda_val = row.get("EBITDA")
+        if ebitda_val is not None and pd.notna(ebitda_val):
+            kwargs["ebitda"] = float(ebitda_val)
+
+        income_statements.append(IncomeStatement(**kwargs))
+
+    # Sort by period date
+    income_statements.sort(key=lambda s: s.period.date)
+
+    # Metadata
+    granularities = sorted({s.period.granularity for s in income_statements})
+    period_range = None
+    if income_statements:
+        dates = [s.period.date for s in income_statements]
+        period_range = (min(dates), max(dates))
+
+    data_completeness = {
+        "income_statements": len(income_statements),
+        "balance_sheets": 0,
+        "cash_flows": 0,
+        "has_da": any(s.depreciation_amortization is not None for s in income_statements),
+        "has_ebitda": any(s.ebitda is not None for s in income_statements),
+    }
+
+    return CompanyFinancials(
+        company=company_obj,
+        income_statements=income_statements,
+        balance_sheets=None,
+        cash_flows=None,
+        source="cvm",
+        source_version="dfp_itr_v1",
+        period_range=period_range,
+        granularity=granularities,
+        data_completeness=data_completeness,
+    )
