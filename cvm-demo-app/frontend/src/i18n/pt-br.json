@@ -5,7 +5,8 @@
     "subtitle_template": "{company} — Análise de Sinais Financeiros",
     "lang_toggle": "EN",
     "cache_toggle_live": "Ao Vivo",
-    "cache_toggle_cache": "Cache"
+    "cache_toggle_cache": "Cache",
+    "analysis_context": "Análise de Sinais Financeiros"
   },
   "nav": {
     "previous": "Anterior",

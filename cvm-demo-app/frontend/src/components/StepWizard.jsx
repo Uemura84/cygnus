@@ -23,21 +23,25 @@ export default function StepWizard() {
     <div className={styles.wrapper}>
       {/* Header */}
       <header className={styles.header}>
-        <div className={styles.headerLeft}>
+        {/* Row 1: logo + controls */}
+        <div className={styles.headerBar}>
           <img src="/cygnus-logo-dark.svg" alt="Cygnus" className={styles.logo} />
-          <span className={styles.subtitle}>
-            {(t.header.subtitle_template ?? t.header.subtitle).replace('{company}', state.companyName ?? 'BRASKEM S.A.')}
-          </span>
+          <div className={styles.headerRight}>
+            <CompanySelector />
+            <LanguageToggle />
+            <button
+              className={`${styles.toggle} ${state.cacheMode ? styles.toggleActive : ''}`}
+              onClick={handleCacheToggle}
+            >
+              {state.cacheMode ? t.header.cache_toggle_cache : t.header.cache_toggle_live}
+            </button>
+          </div>
         </div>
-        <div className={styles.headerRight}>
-          <CompanySelector />
-          <LanguageToggle />
-          <button
-            className={`${styles.toggle} ${state.cacheMode ? styles.toggleActive : ''}`}
-            onClick={handleCacheToggle}
-          >
-            {state.cacheMode ? t.header.cache_toggle_cache : t.header.cache_toggle_live}
-          </button>
+        {/* Row 2: company context strip */}
+        <div className={styles.headerContext}>
+          <span className={styles.companyName}>{state.companyName ?? 'BRASKEM S.A.'}</span>
+          <span className={styles.contextSep}>—</span>
+          <span className={styles.contextLabel}>{t.header.analysis_context ?? 'Financial Signal Analysis'}</span>
         </div>
       </header>
 
@@ -55,14 +59,14 @@ export default function StepWizard() {
       {/* Footer — Previous / Next only */}
       <footer className={styles.footer}>
         <button
-          className={styles.navBtn}
+          className={styles.navBtnPrev}
           disabled={state.currentStep <= 1}
           onClick={() => dispatch({ type: 'NAVIGATE_TO_STEP', step: state.currentStep - 1 })}
         >
           ← {t.nav.previous}
         </button>
         <button
-          className={styles.navBtn}
+          className={styles.navBtnNext}
           disabled={state.currentStep >= 9}
           onClick={() => dispatch({ type: 'NAVIGATE_TO_STEP', step: state.currentStep + 1 })}
         >

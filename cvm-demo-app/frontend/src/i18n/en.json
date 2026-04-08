@@ -5,7 +5,8 @@
     "subtitle_template": "{company} — Financial Signal Analysis",
     "lang_toggle": "PT-BR",
     "cache_toggle_live": "Live",
-    "cache_toggle_cache": "Cache"
+    "cache_toggle_cache": "Cache",
+    "analysis_context": "Financial Signal Analysis"
   },
   "nav": {
     "previous": "Previous",

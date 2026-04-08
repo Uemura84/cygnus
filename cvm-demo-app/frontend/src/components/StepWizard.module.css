@@ -6,17 +6,17 @@
 }
 
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 24px;
   background: var(--navy);
   flex-shrink: 0;
 }
 
-.headerLeft {
+/* ── Top nav bar: logo + controls ────────────────────────────────────────────  */
+
+.headerBar {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
 }
 
 .logo {
@@ -25,18 +25,42 @@
   display: block;
 }
 
-.subtitle {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.45);
-  margin-top: 2px;
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0.04em;
-}
-
 .headerRight {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* ── Company context strip ───────────────────────────────────────────────────  */
+
+.headerContext {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 24px 10px;
+  height: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.companyName {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.contextSep {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.2);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.contextLabel {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: rgba(100, 160, 220, 0.7);
+  font-family: 'DM Sans', sans-serif;
 }
 
 .toggle {
@@ -94,28 +118,54 @@
   justify-content: space-between;
   padding: 10px 24px;
   background: var(--navy);
-  box-shadow: 0 -2px 8px rgba(11, 31, 58, 0.2);
 }
 
-.navBtn {
+/* ── Previous button — outline ───────────────────────────────────────────────  */
+
+.navBtnPrev {
   padding: 7px 18px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.75);
   font-family: 'DM Sans', sans-serif;
   transition: background 0.15s, border-color 0.15s;
 }
 
-.navBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.13);
-  border-color: rgba(255, 255, 255, 0.35);
+.navBtnPrev:hover:not(:disabled) {
+  background: var(--blue-dim);
+  border-color: var(--blue-line);
 }
 
-.navBtn:disabled {
-  opacity: 0.28;
+.navBtnPrev:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* ── Next button — Signal Blue fill ──────────────────────────────────────────  */
+
+.navBtnNext {
+  padding: 7px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--blue);
+  background: var(--blue);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.navBtnNext:hover:not(:disabled) {
+  background: #3a9eff;
+  border-color: #3a9eff;
+}
+
+.navBtnNext:disabled {
+  opacity: 0.25;
   cursor: not-allowed;
 }
