@@ -4,7 +4,7 @@
   width: 240px;
   flex-shrink: 0;
   background: var(--navy);
-  padding: 16px 10px 10px;
+  padding: 16px 10px 70px; /* bottom clears fixed gradient footer (~56px) */
   display: flex;
   flex-direction: column;
   overflow: hidden;

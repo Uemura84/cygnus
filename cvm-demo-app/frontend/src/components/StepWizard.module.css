@@ -16,11 +16,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
+  padding: 14px 24px;
 }
 
 .logo {
-  height: 28px;
+  height: 38px;
   width: auto;
   display: block;
 }
@@ -43,8 +43,8 @@
 }
 
 .companyName {
-  font-size: 0.82rem;
-  font-weight: 500;
+  font-size: 0.95rem;
+  font-weight: 600;
   color: #fff;
   font-family: 'DM Sans', sans-serif;
   letter-spacing: 0.02em;
@@ -57,7 +57,7 @@
 }
 
 .contextLabel {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 400;
   color: rgba(100, 160, 220, 0.7);
   font-family: 'DM Sans', sans-serif;
@@ -97,6 +97,7 @@
 .main {
   flex: 1;
   padding: 28px;
+  padding-bottom: 80px; /* clears fixed gradient footer */
   overflow-y: auto;
   background: var(--offwhite);
 }
@@ -112,42 +113,54 @@
 }
 
 .footer {
-  flex-shrink: 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 10px 24px;
-  background: var(--navy);
+  padding: 28px 24px 14px;
+  background: linear-gradient(
+    to bottom,
+    rgba(245, 247, 250, 0) 0%,
+    rgba(245, 247, 250, 0.96) 45%
+  );
+  pointer-events: none; /* let the gradient area pass clicks through */
 }
 
-/* ── Previous button — outline ───────────────────────────────────────────────  */
+/* ── Previous button — outline, navy text ────────────────────────────────────  */
 
 .navBtnPrev {
+  pointer-events: all;
   padding: 7px 18px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: transparent;
+  border: 1px solid rgba(11, 31, 58, 0.22);
+  background: rgba(245, 247, 250, 0.9);
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--navy);
   font-family: 'DM Sans', sans-serif;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .navBtnPrev:hover:not(:disabled) {
-  background: var(--blue-dim);
-  border-color: var(--blue-line);
+  background: #fff;
+  border-color: rgba(11, 31, 58, 0.35);
+  box-shadow: 0 1px 4px rgba(11, 31, 58, 0.1);
 }
 
 .navBtnPrev:disabled {
-  opacity: 0.25;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 /* ── Next button — Signal Blue fill ──────────────────────────────────────────  */
 
 .navBtnNext {
+  pointer-events: all;
   padding: 7px 18px;
   border-radius: 6px;
   border: 1px solid var(--blue);
@@ -157,15 +170,16 @@
   font-weight: 600;
   color: #fff;
   font-family: 'DM Sans', sans-serif;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .navBtnNext:hover:not(:disabled) {
   background: #3a9eff;
   border-color: #3a9eff;
+  box-shadow: 0 1px 6px rgba(30, 144, 255, 0.35);
 }
 
 .navBtnNext:disabled {
-  opacity: 0.25;
+  opacity: 0.3;
   cursor: not-allowed;
 }
