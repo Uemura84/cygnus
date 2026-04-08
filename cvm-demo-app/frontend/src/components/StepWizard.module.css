@@ -94,10 +94,18 @@
   min-height: 0;
 }
 
+/* Content column: takes remaining width right of sidebar */
+.contentCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
 .main {
   flex: 1;
-  padding: 28px;
-  padding-bottom: 64px; /* clears fixed floating buttons (~16px bottom + ~36px button) */
+  padding: 36px 28px 28px; /* extra top padding keeps step title clear of header */
   overflow-y: auto;
   background: var(--offwhite);
 }
@@ -113,39 +121,30 @@
 }
 
 .footer {
-  position: fixed;
-  bottom: 16px;
-  left: 0;
-  right: 0;
-  z-index: 100;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 10px 28px 14px;
   background: transparent;
-  pointer-events: none;
 }
 
-/* ── Previous button — navy floating ─────────────────────────────────────────  */
+/* ── Previous button — ghost ─────────────────────────────────────────────────  */
 
 .navBtnPrev {
-  pointer-events: all;
-  padding: 8px 20px;
-  border-radius: 6px;
+  padding: 8px 4px;
   border: none;
-  background: var(--navy);
+  background: transparent;
   cursor: pointer;
   font-size: 0.85rem;
-  font-weight: 500;
-  color: #fff;
+  font-weight: 400;
+  color: var(--gray);
   font-family: 'DM Sans', sans-serif;
-  box-shadow: 0 2px 8px rgba(11, 31, 58, 0.25);
-  transition: background 0.15s, box-shadow 0.15s;
+  transition: color 0.15s;
 }
 
 .navBtnPrev:hover:not(:disabled) {
-  background: #142d52;
-  box-shadow: 0 3px 12px rgba(11, 31, 58, 0.35);
+  color: var(--navy);
 }
 
 .navBtnPrev:disabled {
@@ -153,10 +152,9 @@
   cursor: not-allowed;
 }
 
-/* ── Next button — Signal Blue floating ──────────────────────────────────────  */
+/* ── Next button — Signal Blue ───────────────────────────────────────────────  */
 
 .navBtnNext {
-  pointer-events: all;
   padding: 8px 20px;
   border-radius: 6px;
   border: none;
@@ -166,13 +164,13 @@
   font-weight: 600;
   color: #fff;
   font-family: 'DM Sans', sans-serif;
-  box-shadow: 0 2px 8px rgba(30, 144, 255, 0.35);
+  box-shadow: 0 2px 8px rgba(30, 144, 255, 0.3);
   transition: background 0.15s, box-shadow 0.15s;
 }
 
 .navBtnNext:hover:not(:disabled) {
   background: #3a9eff;
-  box-shadow: 0 3px 12px rgba(30, 144, 255, 0.5);
+  box-shadow: 0 3px 12px rgba(30, 144, 255, 0.45);
 }
 
 .navBtnNext:disabled {

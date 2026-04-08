@@ -48,31 +48,32 @@ export default function StepWizard() {
       {/* Body */}
       <div className={styles.body}>
         <StepSidebar />
-        <main className={styles.main}>
-          {state.cacheMode && (
-            <div className={styles.cacheBanner}>{t.cache_banner}</div>
-          )}
-          <StepContent />
-        </main>
+        {/* Content column: main scroll area + footer, both right of sidebar */}
+        <div className={styles.contentCol}>
+          <main className={styles.main}>
+            {state.cacheMode && (
+              <div className={styles.cacheBanner}>{t.cache_banner}</div>
+            )}
+            <StepContent />
+          </main>
+          <footer className={styles.footer}>
+            <button
+              className={styles.navBtnPrev}
+              disabled={state.currentStep <= 1}
+              onClick={() => dispatch({ type: 'NAVIGATE_TO_STEP', step: state.currentStep - 1 })}
+            >
+              ← {t.nav.previous}
+            </button>
+            <button
+              className={styles.navBtnNext}
+              disabled={state.currentStep >= 9}
+              onClick={() => dispatch({ type: 'NAVIGATE_TO_STEP', step: state.currentStep + 1 })}
+            >
+              {t.nav.next} →
+            </button>
+          </footer>
+        </div>
       </div>
-
-      {/* Footer — Previous / Next only */}
-      <footer className={styles.footer}>
-        <button
-          className={styles.navBtnPrev}
-          disabled={state.currentStep <= 1}
-          onClick={() => dispatch({ type: 'NAVIGATE_TO_STEP', step: state.currentStep - 1 })}
-        >
-          ← {t.nav.previous}
-        </button>
-        <button
-          className={styles.navBtnNext}
-          disabled={state.currentStep >= 9}
-          onClick={() => dispatch({ type: 'NAVIGATE_TO_STEP', step: state.currentStep + 1 })}
-        >
-          {t.nav.next} →
-        </button>
-      </footer>
     </div>
   )
 }

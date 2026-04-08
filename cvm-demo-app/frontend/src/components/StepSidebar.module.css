@@ -4,7 +4,7 @@
   width: 240px;
   flex-shrink: 0;
   background: var(--navy);
-  padding: 16px 10px 60px; /* bottom clears fixed floating buttons */
+  padding: 16px 10px 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
