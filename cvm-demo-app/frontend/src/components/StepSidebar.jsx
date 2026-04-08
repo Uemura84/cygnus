@@ -146,6 +146,15 @@ export default function StepSidebar() {
 
   return (
     <nav className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
+
+      {/* Logo */}
+      <div className={styles.logoArea}>
+        {collapsed
+          ? <img src="/cygnus-mark.svg"      alt="Cygnus" className={styles.logoMark} />
+          : <img src="/cygnus-logo-dark.svg" alt="Cygnus" className={styles.logoFull} />
+        }
+      </div>
+
       <div className={styles.stepsContainer}>
         {STEP_META.map(({ n, labelKey, fullKey }, i) => {
           const stepState = state.stepStates[n]

@@ -5,88 +5,6 @@
   background: var(--offwhite);
 }
 
-.header {
-  background: var(--navy);
-  flex-shrink: 0;
-}
-
-/* ── Top nav bar: logo + controls ────────────────────────────────────────────  */
-
-.headerBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 24px;
-}
-
-.logo {
-  height: 56px;
-  width: auto;
-  display: block;
-}
-
-.headerRight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ── Company context strip ───────────────────────────────────────────────────  */
-
-.headerContext {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 24px 7px;
-  height: 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.companyName {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #fff;
-  font-family: 'DM Sans', sans-serif;
-  letter-spacing: 0.02em;
-}
-
-.contextSep {
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.2);
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.contextLabel {
-  font-size: 0.82rem;
-  font-weight: 400;
-  color: rgba(100, 160, 220, 0.7);
-  font-family: 'DM Sans', sans-serif;
-}
-
-.toggle {
-  padding: 5px 14px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.07);
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
-  font-family: 'DM Sans', sans-serif;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.toggle:hover {
-  background: rgba(255, 255, 255, 0.13);
-  border-color: rgba(255, 255, 255, 0.35);
-}
-
-.toggleActive {
-  background: rgba(239, 159, 39, 0.18);
-  border-color: #EF9F27;
-  color: #EF9F27;
-}
-
 .body {
   display: flex;
   flex: 1;
@@ -103,11 +21,61 @@
   min-width: 0;
 }
 
+/* ── Context row (scrolls with content) ──────────────────────────────────────  */
+
 .main {
   flex: 1;
-  padding: 36px 28px 28px; /* extra top padding keeps step title clear of header */
+  padding: 0;
   overflow-y: auto;
   background: var(--offwhite);
+}
+
+.contextRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 28px;
+  border-bottom: 1px solid rgba(11, 31, 58, 0.07);
+  background: var(--offwhite);
+}
+
+.contextLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.companyName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--navy);
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0.01em;
+}
+
+.contextSep {
+  font-size: 0.72rem;
+  color: rgba(11, 31, 58, 0.2);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.contextLabel {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--gray);
+  font-family: 'DM Sans', sans-serif;
+}
+
+.contextRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stepArea {
+  padding: 28px 28px 0;
 }
 
 .cacheBanner {
@@ -117,8 +85,36 @@
   padding: 8px 14px;
   font-size: 0.8rem;
   color: #92400e;
-  margin-bottom: 16px;
+  margin: 16px 28px 0;
 }
+
+/* ── Controls (live/cache toggle) ────────────────────────────────────────────  */
+
+.toggle {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(11, 31, 58, 0.18);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--gray);
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.toggle:hover {
+  background: rgba(11, 31, 58, 0.05);
+  border-color: rgba(11, 31, 58, 0.28);
+}
+
+.toggleActive {
+  background: rgba(239, 159, 39, 0.1);
+  border-color: #EF9F27;
+  color: #92400e;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────────  */
 
 .footer {
   flex-shrink: 0;

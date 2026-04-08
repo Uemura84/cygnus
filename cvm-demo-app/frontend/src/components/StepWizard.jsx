@@ -21,41 +21,46 @@ export default function StepWizard() {
 
   return (
     <div className={styles.wrapper}>
-      {/* Header */}
-      <header className={styles.header}>
-        {/* Row 1: logo + controls */}
-        <div className={styles.headerBar}>
-          <img src="/cygnus-logo-dark.svg" alt="Cygnus" className={styles.logo} />
-          <div className={styles.headerRight}>
-            <CompanySelector />
-            <LanguageToggle />
-            <button
-              className={`${styles.toggle} ${state.cacheMode ? styles.toggleActive : ''}`}
-              onClick={handleCacheToggle}
-            >
-              {state.cacheMode ? t.header.cache_toggle_cache : t.header.cache_toggle_live}
-            </button>
-          </div>
-        </div>
-        {/* Row 2: company context strip */}
-        <div className={styles.headerContext}>
-          <span className={styles.companyName}>{state.companyName ?? 'BRASKEM S.A.'}</span>
-          <span className={styles.contextSep}>—</span>
-          <span className={styles.contextLabel}>{t.header.analysis_context ?? 'Financial Signal Analysis'}</span>
-        </div>
-      </header>
-
-      {/* Body */}
       <div className={styles.body}>
         <StepSidebar />
-        {/* Content column: main scroll area + footer, both right of sidebar */}
+
+        {/* Content column: context row + scrollable main + footer */}
         <div className={styles.contentCol}>
           <main className={styles.main}>
+
+            {/* Context row — scrolls with content */}
+            <div className={styles.contextRow}>
+              <div className={styles.contextLeft}>
+                <span className={styles.companyName}>
+                  {state.companyName ?? 'BRASKEM S.A.'}
+                </span>
+                <span className={styles.contextSep}>—</span>
+                <span className={styles.contextLabel}>
+                  {t.header?.analysis_context ?? 'Financial Signal Analysis'}
+                </span>
+              </div>
+              <div className={styles.contextRight}>
+                <CompanySelector />
+                <LanguageToggle />
+                <button
+                  className={`${styles.toggle} ${state.cacheMode ? styles.toggleActive : ''}`}
+                  onClick={handleCacheToggle}
+                >
+                  {state.cacheMode ? t.header.cache_toggle_cache : t.header.cache_toggle_live}
+                </button>
+              </div>
+            </div>
+
             {state.cacheMode && (
               <div className={styles.cacheBanner}>{t.cache_banner}</div>
             )}
-            <StepContent />
+
+            <div className={styles.stepArea}>
+              <StepContent />
+            </div>
           </main>
+
+          {/* Footer — Previous / Next only */}
           <footer className={styles.footer}>
             <button
               className={styles.navBtnPrev}
