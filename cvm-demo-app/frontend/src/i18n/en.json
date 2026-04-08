@@ -18,8 +18,13 @@
     "running": "Running",
     "complete": "Complete"
   },
+  "sidebar": {
+    "collapse": "Collapse",
+    "expand": "Expand"
+  },
   "step1": {
-    "title": "Download CVM Data",
+    "title": "Download Data",
+    "title_full": "Download CVM Data",
     "description": "Downloads DFP (annual) and ITR (quarterly) financial statements from the CVM open data portal.",
     "running_message": "Downloading data from CVM portal...",
     "summary_company": "Company",
@@ -40,7 +45,8 @@
     "stmt_dfc": "Cash Flow (DFC)"
   },
   "step2": {
-    "title": "Data Quality Filters",
+    "title": "Quality Filters",
+    "title_full": "Data Quality Filters",
     "description": "Applies sequential filters to the raw CVM data across all financial statements (DRE, BPA, BPP, DFC): removes prior-year restated rows, filters to the selected company, resolves filing overlaps, and converts quarterly figures to standalone periods.",
     "running_message": "Applying filters...",
     "chart_title": "Data Funnel",
@@ -73,7 +79,8 @@
     "after_label": "After"
   },
   "step3": {
-    "title": "Financial Statement Mapping",
+    "title": "Statement Mapping",
+    "title_full": "Financial Statement Mapping",
     "description": "Applies filing priority rules to the data from Step 2 — preferring annual filings (DFP) over quarterly (ITR), and standalone quarterly figures over YTD cumulative — then maps CVM account codes to a common financial model across income statement, balance sheet, and cash flow.",
     "running_message": "Transforming data...",
     "before_dedup": "Before Dedup",
@@ -315,7 +322,8 @@
     "cross_check_cash_reconciliation": "Cash Reconciliation"
   },
   "step6": {
-    "title": "Pattern Detection & Risk Assessment",
+    "title": "Pattern Detection",
+    "title_full": "Pattern Detection & Risk Assessment",
     "description": "Runs 20 detection algorithms across profitability, balance sheet, and cash flow, builds composite signals, and scores company risk using CVM data only",
     "running_message": "Detecting patterns...",
     "algorithms_run": "Algorithms Run",
@@ -345,7 +353,8 @@
     "caveat_tooltip": "This is an order-of-magnitude estimate"
   },
   "step7": {
-    "title": "AI Industry Specialist",
+    "title": "AI Specialist",
+    "title_full": "AI Industry Specialist",
     "description": "AI-powered analysis with industry and macro context",
     "running": "Consulting AI Industry Specialist...",
     "run_button": "Consult AI Agent",

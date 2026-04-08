@@ -1,13 +1,36 @@
+/* ── Sidebar shell ───────────────────────────────────────────────────────────  */
+
 .sidebar {
-  width: 260px;
+  width: 240px;
   flex-shrink: 0;
   background: var(--navy);
-  padding: 16px 10px;
+  padding: 16px 10px 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  overflow-y: auto;
+  overflow: hidden;
+  transition: width 0.25s ease;
 }
+
+.sidebarCollapsed {
+  width: 54px;
+}
+
+/* ── Steps container ─────────────────────────────────────────────────────────  */
+
+.stepsContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.stepItem {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Step button ─────────────────────────────────────────────────────────────  */
 
 .stepBtn {
   display: flex;
@@ -21,7 +44,14 @@
   text-align: left;
   width: 100%;
   transition: background 0.12s;
-  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebarCollapsed .stepBtn {
+  padding: 9px 4px;
+  gap: 0;
+  justify-content: center;
 }
 
 .stepNumber {
@@ -50,7 +80,42 @@
   font-family: 'DM Sans', sans-serif;
 }
 
-/* States */
+/* ── Pipeline flow connector ─────────────────────────────────────────────────  */
+
+/*
+ * The connector sits between step buttons (column flex, after each button except the last).
+ * Aligned with the step-number column centre (≈16px from stepItem left = 26px from sidebar edge).
+ * In collapsed mode it re-centres to the middle of the narrower sidebar.
+ */
+.flowConnector {
+  height: 10px;
+  width: 2px;
+  margin-left: 16px;  /* number centre: 10px btn-pad + 7px (half of 14px number) ≈ 17px */
+  flex-shrink: 0;
+}
+
+.sidebarCollapsed .flowConnector {
+  margin: 0 auto;   /* centre the 2px line in the collapsed 34px content area */
+}
+
+/* Completed step → solid Signal Blue 40% */
+.lineComplete {
+  background: rgba(30, 144, 255, 0.4);
+}
+
+/* Current / pending step → dashed slate 30% (4px on, 4px off per spec) */
+.linePending {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(100, 116, 139, 0.3) 0px,
+    rgba(100, 116, 139, 0.3) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* ── Step states ─────────────────────────────────────────────────────────────  */
+
 .pending {
   opacity: 0.55;
   cursor: default;
@@ -103,15 +168,24 @@
   opacity: 1;
 }
 
+/* ── Status indicators ───────────────────────────────────────────────────────  */
+
 .check {
   margin-left: auto;
+  flex-shrink: 0;
   color: #4ade80;
   font-size: 0.8rem;
   font-weight: 700;
 }
 
+.sidebarCollapsed .check {
+  margin-left: 2px;
+  font-size: 0.65rem;
+}
+
 .spinner {
   margin-left: auto;
+  flex-shrink: 0;
   width: 13px;
   height: 13px;
   border: 2px solid rgba(30, 144, 255, 0.25);
@@ -122,4 +196,45 @@
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ── Collapse toggle ─────────────────────────────────────────────────────────  */
+
+.collapseBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.38);
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background 0.15s, color 0.15s;
+}
+
+.collapseBtn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.sidebarCollapsed .collapseBtn {
+  padding: 6px 4px;
+  justify-content: center;
+}
+
+.collapseChevron {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.collapseLabel {
+  font-size: 0.72rem;
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
 }

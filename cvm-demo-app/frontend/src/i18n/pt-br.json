@@ -18,8 +18,13 @@
     "running": "Executando",
     "complete": "Concluído"
   },
+  "sidebar": {
+    "collapse": "Recolher",
+    "expand": "Expandir"
+  },
   "step1": {
-    "title": "Download de Dados CVM",
+    "title": "Download de Dados",
+    "title_full": "Download de Dados CVM",
     "description": "Baixa demonstrações financeiras DFP (anuais) e ITR (trimestrais) do portal de dados abertos da CVM.",
     "running_message": "Baixando dados do portal CVM...",
     "summary_company": "Empresa",
@@ -40,7 +45,8 @@
     "stmt_dfc": "Fluxo de Caixa (DFC)"
   },
   "step2": {
-    "title": "Filtros de Qualidade de Dados",
+    "title": "Filtros de Qualidade",
+    "title_full": "Filtros de Qualidade de Dados",
     "description": "Aplica filtros sequenciais aos dados brutos da CVM: seleciona contas da DRE, remove linhas comparativas reapresentadas e exclui entidades holding. Valores trimestrais são convertidos de acumulado anual para standalone.",
     "running_message": "Aplicando filtros...",
     "chart_title": "Funil de Dados",
@@ -73,7 +79,8 @@
     "after_label": "Após"
   },
   "step3": {
-    "title": "Mapeamento de Demonstrações Financeiras",
+    "title": "Mapeamento DRE",
+    "title_full": "Mapeamento de Demonstrações Financeiras",
     "description": "Aplica regras de prioridade de arquivos aos dados do Passo 2 — priorizando demonstrativos anuais (DFP) sobre trimestrais (ITR), e valores trimestrais individuais sobre acumulados do exercício — e mapeia os códigos CVM para um modelo financeiro comum em DRE, balanço patrimonial e fluxo de caixa.",
     "running_message": "Transformando dados...",
     "before_dedup": "Antes da Dedup",
@@ -315,7 +322,8 @@
     "cross_check_cash_reconciliation": "Reconciliação de Caixa"
   },
   "step6": {
-    "title": "Detecção de Padrões e Avaliação de Risco",
+    "title": "Detecção de Padrões",
+    "title_full": "Detecção de Padrões e Avaliação de Risco",
     "description": "Executa 20 algoritmos de detecção em rentabilidade, balanço patrimonial e fluxo de caixa, constrói sinais compostos e pontua risco usando apenas dados da CVM",
     "running_message": "Detectando padrões...",
     "algorithms_run": "Algoritmos Executados",
@@ -345,7 +353,8 @@
     "caveat_tooltip": "Estimativa de ordem de grandeza"
   },
   "step7": {
-    "title": "Especialista Setorial IA",
+    "title": "Especialista IA",
+    "title_full": "Especialista Setorial IA",
     "description": "Análise com IA incluindo contexto setorial e macroeconômico",
     "running": "Consultando Especialista Setorial IA...",
     "run_button": "Consultar Agente IA",
