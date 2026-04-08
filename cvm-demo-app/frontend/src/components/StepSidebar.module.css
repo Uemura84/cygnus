@@ -63,12 +63,6 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
-.stepIcon {
-  font-size: 0.9rem;
-  flex-shrink: 0;
-  opacity: 0.65;
-}
-
 .stepLabel {
   font-size: 0.78rem;
   color: rgba(255, 255, 255, 0.48);
@@ -90,7 +84,7 @@
 .flowConnector {
   height: 10px;
   width: 2px;
-  margin-left: 16px;  /* number centre: 10px btn-pad + 7px (half of 14px number) ≈ 17px */
+  margin-left: 41px;  /* icon centre: 10px btn-pad + 14px number + 8px gap + 10px (half of 20px icon) − 1px = 41px */
   flex-shrink: 0;
 }
 
@@ -145,10 +139,6 @@
   color: rgba(255, 255, 255, 0.45);
 }
 
-.complete .stepIcon {
-  opacity: 0.9;
-}
-
 .complete:not(:disabled):hover {
   background: rgba(255, 255, 255, 0.06);
 }
@@ -162,10 +152,6 @@
 .current .stepLabel {
   color: var(--blue);
   font-weight: 600;
-}
-
-.current .stepIcon {
-  opacity: 1;
 }
 
 /* ── Status indicators ───────────────────────────────────────────────────────  */
