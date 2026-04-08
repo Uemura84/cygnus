@@ -316,7 +316,7 @@ async def stream(payload: dict, config) -> AsyncIterator[str]:
     try:
         resp = await client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=1500,
+            max_tokens=4000,
             temperature=0.5,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
