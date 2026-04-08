@@ -19,6 +19,7 @@
 
 .stepsContainer {
   flex: 1;
+  min-height: 0; /* allows shrink below content size so collapseBtn stays visible */
   display: flex;
   flex-direction: column;
   overflow-y: auto;
