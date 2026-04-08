@@ -12,6 +12,7 @@ from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import app_config, pipeline_state, CACHE_DIR, DATA_DIR
+from cache_utils import load_cache, save_cache
 from steps import (
     step1_download,
     step2_preparation,
@@ -266,23 +267,52 @@ async def llm_stream(websocket: WebSocket):
         step = payload.get("step", 9)
 
         if step == 7:
-            # Collect full LLM response, clean JSON server-side, then send once.
-            # We do NOT stream tokens to the frontend for step 7 because:
-            # (a) the frontend doesn't display streaming text for this step (only progress
-            #     messages), and (b) cleaning/validating JSON requires the complete text.
+            # Serve from cache when cache_mode is on
+            if app_config.cache_mode:
+                cached = load_cache(7, CACHE_DIR, company_name=app_config.company_name)
+                if cached:
+                    cached_text = cached.get("data", {}).get("response_text", "")
+                    if cached_text:
+                        pipeline_state["step7"] = {"response_text": cached_text}
+                        await websocket.send_text(cached_text)
+                        await websocket.send_text("[DONE]")
+                        return
+
+            # Live LLM call — collect full response, clean JSON, send once
             full_text = ""
             async for token in step7_ai_agent.stream(payload, config=app_config):
                 full_text += token
             cleaned_json = _clean_step7_json(full_text)
             pipeline_state["step7"] = {"response_text": cleaned_json}
+            save_cache(7, {
+                "status": "complete",
+                "data": {"response_text": cleaned_json, "status": "complete"},
+                "metadata": {"source": "websocket"},
+            }, CACHE_DIR, company_name=app_config.company_name)
             await websocket.send_text(cleaned_json)
         elif step == 8:
-            # Executive Summary — collect full JSON, clean, send once (same pattern as step 7)
+            # Serve from cache when cache_mode is on
+            if app_config.cache_mode:
+                cached = load_cache(8, CACHE_DIR, company_name=app_config.company_name)
+                if cached:
+                    cached_text = cached.get("data", {}).get("response_text", "")
+                    if cached_text:
+                        pipeline_state["step8"] = {"response_text": cached_text}
+                        await websocket.send_text(cached_text)
+                        await websocket.send_text("[DONE]")
+                        return
+
+            # Live LLM call — collect full JSON, clean, send once
             full_text = ""
             async for token in step8_reporting.stream(payload, config=app_config):
                 full_text += token
             cleaned_json = _clean_step7_json(full_text)
             pipeline_state["step8"] = {"response_text": cleaned_json}
+            save_cache(8, {
+                "status": "complete",
+                "data": {"response_text": cleaned_json, "status": "complete"},
+                "metadata": {"source": "websocket"},
+            }, CACHE_DIR, company_name=app_config.company_name)
             await websocket.send_text(cleaned_json)
         else:
             # Step 9 Q&A — conversational streaming with pipeline context
