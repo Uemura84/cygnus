@@ -5,7 +5,7 @@
  */
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
-const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe']
+const COLORS = ['#1e90ff', 'rgba(30,144,255,0.7)', 'rgba(30,144,255,0.45)', 'rgba(30,144,255,0.25)']
 
 export default function DataFunnel({ filters }) {
   if (!filters?.length) return null

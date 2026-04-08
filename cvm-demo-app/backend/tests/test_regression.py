@@ -90,33 +90,23 @@ def compare_step4(baseline: dict, current: dict, company: str) -> list[str]:
 
 
 def compare_step6(baseline: dict, current: dict, company: str) -> list[str]:
+    """Verify profitability findings (F### prefix) are unchanged.
+
+    Sprint 3 note: aggregate risk_score, risk_level, and raw_findings WILL change
+    because BS/CF/stacked findings are now included. We only assert that the
+    profitability findings themselves (codes, severities, patterns) are unchanged.
+    """
     errors = []
     b6 = baseline.get("step6_data", {})
     c6 = current["step6_data"]
 
-    # Finding count
-    b_count = b6.get("raw_findings")
-    c_count = c6.get("raw_findings")
-    if b_count != c_count:
-        errors.append(f"{company} Step6: raw_findings {b_count} vs {c_count}")
-
-    # Risk score
-    b_risk = b6.get("risk_score")
-    c_risk = c6.get("risk_score")
-    if b_risk is None or c_risk is None or abs(b_risk - c_risk) > RISK_TOL:
-        errors.append(f"{company} Step6: risk_score {b_risk} vs {c_risk}")
-
-    # Risk level
-    if b6.get("risk_level") != c6.get("risk_level"):
-        errors.append(f"{company} Step6: risk_level {b6.get('risk_level')} vs {c6.get('risk_level')}")
-
-    # Findings: check severity and pattern match
-    b_findings = {f["id"]: f for f in b6.get("findings", [])}
-    c_findings = {f["id"]: f for f in c6.get("findings", [])}
+    # Only check profitability findings (F### prefix) — BS/CF/stacked are new in Sprint 3
+    b_findings = {f["id"]: f for f in b6.get("findings", []) if f.get("id", "").startswith("F")}
+    c_findings = {f["id"]: f for f in c6.get("findings", []) if f.get("id", "").startswith("F")}
 
     for fid in b_findings:
         if fid not in c_findings:
-            errors.append(f"{company} Step6: finding {fid} missing in current output")
+            errors.append(f"{company} Step6: profitability finding {fid} missing in current output")
             continue
         bf = b_findings[fid]
         cf = c_findings[fid]

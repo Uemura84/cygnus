@@ -256,6 +256,59 @@
   margin-bottom: 14px;
 }
 
+.chartCaption {
+  font-size: 0.78rem;
+  color: var(--gray);
+  font-style: italic;
+  margin-top: 10px;
+  line-height: 1.55;
+  padding: 0 2px;
+}
+
+.metricTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-bottom: 18px;
+}
+
+.metricTable th {
+  text-align: left;
+  padding: 6px 10px;
+  background: var(--offwhite);
+  color: var(--blue);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.67rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  border-bottom: 1px solid rgba(11, 31, 58, 0.08);
+}
+
+.metricTable td {
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(11, 31, 58, 0.04);
+  color: var(--gray);
+  vertical-align: middle;
+}
+
+.metricTable td:first-child {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  color: var(--charcoal);
+  white-space: nowrap;
+}
+
+.metricTable td:not(:first-child) {
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+}
+
+.metricTable tr:last-child td {
+  border-bottom: none;
+}
+
 .splitView {
   display: grid;
   grid-template-columns: 1fr 1fr;

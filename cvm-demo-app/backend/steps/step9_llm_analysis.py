@@ -47,11 +47,14 @@ async def stream(payload: dict, config, pipeline_state: dict = None) -> AsyncIte
 
     system_prompt = (
         "You are a senior industry specialist and financial analyst. You previously analyzed "
-        "a Brazilian company's CVM financial data and provided an initial assessment.\n\n"
+        "a Brazilian company's CVM financial data across three modules: profitability, "
+        "balance sheet health, and cash flow quality — and synthesized cross-module diagnoses.\n\n"
         "You are now in a follow-up conversation. The user may ask about:\n"
-        "- Specific findings or patterns from the analysis\n"
+        "- Specific findings or patterns from any module (profitability, balance sheet, cash flow)\n"
+        "- Cross-module diagnoses and what they mean together\n"
         "- Industry dynamics or macro context\n"
         "- What internal data would be needed to investigate further\n"
+        "- Leverage, liquidity, working capital, dividend sustainability, or cash generation\n"
         "- Comparisons with peers or industry benchmarks\n"
         "- Specific hypotheses and how to test them\n\n"
         "Be concise and specific. Reference the actual numbers from the analysis when relevant. "
@@ -96,17 +99,28 @@ def _build_step6_summary(step6_data: dict, company_name: str) -> str:
     lines = [
         f"Company: {company_name}",
         f"Risk Score: {step6_data.get('risk_score', 'N/A')}/100 ({step6_data.get('risk_level', 'N/A')})",
-        "",
-        "Key Findings:",
     ]
-
-    for f in step6_data.get("findings", []):
-        desc = (f.get("description", "") or "")[:120]
-        lines.append(f"  - {f.get('id','')}: {f.get('pattern','')} ({f.get('severity','')}) — {desc}")
 
     cs = step6_data.get("composite_signals", [])
     if cs:
-        lines.append("")
         lines.append("Composite Signals: " + ", ".join(s.get("composite_signal_type", "") for s in cs))
+
+    findings = step6_data.get("findings", [])
+
+    # Group by module for cleaner context
+    for module, label in [
+        ("profitability",        "Profitability Findings"),
+        ("balance_sheet_health", "Balance Sheet Health Findings"),
+        ("cash_flow_quality",    "Cash Flow Quality Findings"),
+        ("stacked",              "Cross-Module Diagnoses"),
+    ]:
+        module_findings = [f for f in findings if f.get("module", "profitability") == module]
+        if not module_findings:
+            continue
+        lines.append("")
+        lines.append(f"{label}:")
+        for f in module_findings:
+            desc = (f.get("description", "") or "")[:120]
+            lines.append(f"  - {f.get('id','')}: {f.get('pattern','')} ({f.get('severity','')}) — {desc}")
 
     return "\n".join(lines)

@@ -390,7 +390,7 @@ def analyze_peer_comparison(df: pd.DataFrame, sector_map: dict = None) -> list:
         return findings
 
     # Get latest period for each company
-    latest = df.sort_values("period_date").groupby("DENOM_CIA").tail(1).copy()
+    latest = df.sort_values("period_date").groupby("company_id").tail(1).copy()
 
     # Assign sector labels
     def _get_sector(company_name: str) -> str:
@@ -407,7 +407,7 @@ def analyze_peer_comparison(df: pd.DataFrame, sector_map: dict = None) -> list:
             continue
 
         for metric in available_metrics:
-            values = sector_df[["DENOM_CIA", metric]].dropna()
+            values = sector_df[["company_id", metric]].dropna()
             if len(values) < 2:
                 continue
 
@@ -538,7 +538,7 @@ def detect_anomalies(df: pd.DataFrame) -> list:
                     "confidence_score": confidence_score,
                     "severity":       "HIGH",
                     "insight": (
-                        f"{company} ({row['DT_REFER']}): {metric.replace('_pct', '')} "
+                        f"{company} ({row.get('period_date', row.get('DT_REFER', ''))}): {metric.replace('_pct', '')} "
                         f"at {value:.1f}% is outside the normal range "
                         f"({lower:.1f}% to {upper:.1f}%). "
                         f"Investigate one-time items, impairments, or "
@@ -756,7 +756,7 @@ def _enrich_findings_with_dq(findings: list, df: pd.DataFrame) -> None:
     # Pre-compute: which companies have _row_confidence == 'LOW'
     if "_row_confidence" in df.columns:
         low_conf_companies = set(
-            df.loc[df["_row_confidence"] == "LOW", "DENOM_CIA"].unique()
+            df.loc[df["_row_confidence"] == "LOW", "company_id"].unique()
         )
     else:
         low_conf_companies = set()
@@ -796,7 +796,7 @@ def _enrich_findings_with_dq(findings: list, df: pd.DataFrame) -> None:
 
         # Look up the matching df row for is_standalone
         is_standalone = True
-        if "period_date" in df.columns and "DENOM_CIA" in df.columns:
+        if "period_date" in df.columns and "company_id" in df.columns:
             mask = (df["company_id"] == company) & (
                 pd.to_datetime(df["period_date"], errors="coerce") == finding_dt
             )
@@ -946,3 +946,17 @@ def detect_patterns(
     _enrich_findings_with_dq(all_findings, df)
 
     return all_findings
+
+
+def determine_active_modules(df: pd.DataFrame) -> list:
+    """Return list of module names for which data is available in df.
+
+    Currently checks:
+    - "profitability": income statement metrics (Gross_Margin_pct or revenue column present)
+    """
+    modules = []
+    profitability_cols = {"Gross_Margin_pct", "EBIT_Margin_pct", "revenue",
+                          "Receita de Venda de Bens e/ou Serviços"}
+    if profitability_cols.intersection(df.columns):
+        modules.append("profitability")
+    return modules

@@ -24,7 +24,7 @@ export default function StepWizard() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <span className={styles.title}>{t.header.title}</span>
+          <img src="/cygnus-logo-dark.svg" alt="Cygnus" className={styles.logo} />
           <span className={styles.subtitle}>
             {(t.header.subtitle_template ?? t.header.subtitle).replace('{company}', state.companyName ?? 'BRASKEM S.A.')}
           </span>

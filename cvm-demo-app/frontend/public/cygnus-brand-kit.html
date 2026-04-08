@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cygnus — Brand Kit</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0b1f3a;
+    --gray: #4a5568;
+    --blue: #1e90ff;
+    --offwhite: #f5f7fa;
+    --charcoal: #2b2b2b;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; color:var(--charcoal); background:var(--offwhite); -webkit-font-smoothing:antialiased; }
+
+  .page { max-width:900px; margin:0 auto; padding:3rem 2rem 4rem; }
+
+  .page-header {
+    text-align:center;
+    margin-bottom:4rem;
+    padding-bottom:2rem;
+    border-bottom:1px solid rgba(11,31,58,0.08);
+  }
+  .page-header h1 {
+    font-family:'DM Sans',sans-serif;
+    font-size:13px;
+    font-weight:500;
+    letter-spacing:0.2em;
+    color:var(--blue);
+    text-transform:uppercase;
+    margin-bottom:0.5rem;
+  }
+  .page-header p {
+    font-size:14px;
+    color:var(--gray);
+  }
+
+  section { margin-bottom:3.5rem; }
+
+  .section-label {
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--blue);
+    margin-bottom:1.5rem;
+  }
+
+  /* Logo display panels */
+  .logo-panel {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1.5rem;
+    margin-bottom:1.5rem;
+  }
+  @media(max-width:600px){.logo-panel{grid-template-columns:1fr;}}
+
+  .logo-box {
+    height:160px;
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+  }
+  .logo-box.dark { background:var(--navy); }
+  .logo-box.light { background:#fff; border:1px solid rgba(11,31,58,0.08); }
+
+  .logo-box .variant-label {
+    position:absolute;
+    bottom:12px;
+    right:14px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9px;
+    letter-spacing:0.08em;
+    opacity:0.35;
+  }
+  .logo-box.dark .variant-label { color:#fff; }
+  .logo-box.light .variant-label { color:var(--navy); }
+
+  /* Mark sizes row */
+  .mark-row {
+    display:flex;
+    align-items:center;
+    gap:2rem;
+    padding:1.5rem;
+    background:#fff;
+    border-radius:10px;
+    border:1px solid rgba(11,31,58,0.08);
+  }
+  .mark-item {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:0.5rem;
+  }
+  .mark-item .mark-size {
+    font-family:'JetBrains Mono',monospace;
+    font-size:9px;
+    color:var(--gray);
+    opacity:0.5;
+  }
+  .mark-render {
+    background:var(--navy);
+    border-radius:6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* Color swatches */
+  .color-row { display:flex; gap:1rem; flex-wrap:wrap; }
+  .color-swatch {
+    flex:1;
+    min-width:120px;
+    border-radius:8px;
+    overflow:hidden;
+    border:1px solid rgba(11,31,58,0.06);
+  }
+  .color-fill { height:64px; }
+  .color-info {
+    padding:0.75rem;
+    background:#fff;
+  }
+  .color-info .color-name {
+    font-size:13px;
+    font-weight:500;
+    color:var(--navy);
+    margin-bottom:2px;
+  }
+  .color-info .color-hex {
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--gray);
+  }
+  .color-info .color-use {
+    font-size:11px;
+    color:rgba(74,85,104,0.6);
+    margin-top:4px;
+    line-height:1.4;
+  }
+
+  /* Type specimens */
+  .type-specimens { display:flex; flex-direction:column; gap:1.5rem; }
+  .type-specimen {
+    padding:1.5rem;
+    background:#fff;
+    border-radius:8px;
+    border:1px solid rgba(11,31,58,0.06);
+  }
+  .type-specimen .type-name {
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.08em;
+    color:var(--blue);
+    margin-bottom:0.75rem;
+  }
+  .type-specimen .type-role {
+    font-size:12px;
+    color:var(--gray);
+    margin-top:0.5rem;
+    line-height:1.5;
+  }
+
+  /* Usage notes */
+  .usage-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1rem;
+  }
+  @media(max-width:600px){.usage-grid{grid-template-columns:1fr;}}
+  .usage-card {
+    padding:1.25rem;
+    background:#fff;
+    border-radius:8px;
+    border:1px solid rgba(11,31,58,0.06);
+  }
+  .usage-card h4 {
+    font-size:13px;
+    font-weight:500;
+    color:var(--navy);
+    margin-bottom:0.4rem;
+  }
+  .usage-card p {
+    font-size:12px;
+    color:var(--gray);
+    line-height:1.6;
+  }
+  .do { border-left:3px solid #1e90ff; }
+  .dont { border-left:3px solid #e24b4a; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="page-header">
+    <h1>Cygnus Brand Kit</h1>
+    <p>Visual identity reference — logomark, colors, typography, usage</p>
+  </div>
+
+  <!-- LOGO VARIANTS -->
+  <section>
+    <div class="section-label">Primary logomark</div>
+    <div class="logo-panel">
+      <div class="logo-box dark">
+        <svg width="220" height="64" viewBox="0 0 280 80">
+          <g transform="translate(40, 40)">
+            <ellipse cx="0" cy="0" rx="28" ry="9" fill="none" stroke="#1e90ff" stroke-width="0.8" opacity="0.12"/>
+            <ellipse cx="0" cy="0" rx="21" ry="7" fill="none" stroke="#1e90ff" stroke-width="0.9" opacity="0.22"/>
+            <ellipse cx="0" cy="0" rx="14" ry="4.8" fill="none" stroke="#1e90ff" stroke-width="1.1" opacity="0.38"/>
+            <circle cx="0" cy="0" r="5.5" fill="#1e90ff"/>
+            <circle cx="0" cy="0" r="2.2" fill="#0b1f3a"/>
+          </g>
+          <text x="84" y="46" font-family="'DM Sans','Helvetica Neue',sans-serif" font-size="22" font-weight="500" letter-spacing="3.5" fill="#ffffff">CYGNUS</text>
+        </svg>
+        <span class="variant-label">On dark</span>
+      </div>
+      <div class="logo-box light">
+        <svg width="220" height="64" viewBox="0 0 280 80">
+          <g transform="translate(40, 40)">
+            <ellipse cx="0" cy="0" rx="28" ry="9" fill="none" stroke="#0b1f3a" stroke-width="0.8" opacity="0.1"/>
+            <ellipse cx="0" cy="0" rx="21" ry="7" fill="none" stroke="#0b1f3a" stroke-width="0.9" opacity="0.18"/>
+            <ellipse cx="0" cy="0" rx="14" ry="4.8" fill="none" stroke="#0b1f3a" stroke-width="1.1" opacity="0.32"/>
+            <circle cx="0" cy="0" r="5.5" fill="#0b1f3a"/>
+            <circle cx="0" cy="0" r="2.2" fill="#f5f7fa"/>
+          </g>
+          <text x="84" y="46" font-family="'DM Sans','Helvetica Neue',sans-serif" font-size="22" font-weight="500" letter-spacing="3.5" fill="#0b1f3a">CYGNUS</text>
+        </svg>
+        <span class="variant-label">On light</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARK ONLY + SIZES -->
+  <section>
+    <div class="section-label">Standalone mark — scaling</div>
+    <div class="mark-row">
+      <div class="mark-item">
+        <div class="mark-render" style="width:80px;height:80px;border-radius:10px">
+          <svg width="56" height="56" viewBox="0 0 64 64">
+            <g transform="translate(32,32)">
+              <ellipse cx="0" cy="0" rx="28" ry="9" fill="none" stroke="#1e90ff" stroke-width="0.9" opacity="0.12"/>
+              <ellipse cx="0" cy="0" rx="21" ry="7" fill="none" stroke="#1e90ff" stroke-width="1.0" opacity="0.22"/>
+              <ellipse cx="0" cy="0" rx="14" ry="4.8" fill="none" stroke="#1e90ff" stroke-width="1.2" opacity="0.38"/>
+              <circle cx="0" cy="0" r="5.5" fill="#1e90ff"/>
+              <circle cx="0" cy="0" r="2.2" fill="#0b1f3a"/>
+            </g>
+          </svg>
+        </div>
+        <span class="mark-size">80px — App icon</span>
+      </div>
+      <div class="mark-item">
+        <div class="mark-render" style="width:48px;height:48px;border-radius:8px">
+          <svg width="32" height="32" viewBox="0 0 64 64">
+            <g transform="translate(32,32)">
+              <ellipse cx="0" cy="0" rx="26" ry="8.5" fill="none" stroke="#1e90ff" stroke-width="1.2" opacity="0.15"/>
+              <ellipse cx="0" cy="0" rx="18" ry="6" fill="none" stroke="#1e90ff" stroke-width="1.5" opacity="0.28"/>
+              <ellipse cx="0" cy="0" rx="11" ry="3.8" fill="none" stroke="#1e90ff" stroke-width="1.8" opacity="0.45"/>
+              <circle cx="0" cy="0" r="6" fill="#1e90ff"/>
+              <circle cx="0" cy="0" r="2.5" fill="#0b1f3a"/>
+            </g>
+          </svg>
+        </div>
+        <span class="mark-size">48px — Tab icon</span>
+      </div>
+      <div class="mark-item">
+        <div class="mark-render" style="width:32px;height:32px;border-radius:6px">
+          <svg width="20" height="20" viewBox="0 0 32 32">
+            <g transform="translate(16,16)">
+              <ellipse cx="0" cy="0" rx="12" ry="4.2" fill="none" stroke="#1e90ff" stroke-width="1.0" opacity="0.25"/>
+              <ellipse cx="0" cy="0" rx="8" ry="2.8" fill="none" stroke="#1e90ff" stroke-width="1.3" opacity="0.45"/>
+              <circle cx="0" cy="0" r="3.2" fill="#1e90ff"/>
+              <circle cx="0" cy="0" r="1.3" fill="#0b1f3a"/>
+            </g>
+          </svg>
+        </div>
+        <span class="mark-size">32px — Favicon</span>
+      </div>
+      <div class="mark-item">
+        <div class="mark-render" style="width:20px;height:20px;border-radius:4px">
+          <svg width="14" height="14" viewBox="0 0 32 32">
+            <g transform="translate(16,16)">
+              <ellipse cx="0" cy="0" rx="11" ry="4" fill="none" stroke="#1e90ff" stroke-width="1.5" opacity="0.3"/>
+              <ellipse cx="0" cy="0" rx="7" ry="2.5" fill="none" stroke="#1e90ff" stroke-width="2" opacity="0.5"/>
+              <circle cx="0" cy="0" r="3.5" fill="#1e90ff"/>
+              <circle cx="0" cy="0" r="1.5" fill="#0b1f3a"/>
+            </g>
+          </svg>
+        </div>
+        <span class="mark-size">20px — Inline</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- COLORS -->
+  <section>
+    <div class="section-label">Color system</div>
+    <div class="color-row">
+      <div class="color-swatch">
+        <div class="color-fill" style="background:#0b1f3a"></div>
+        <div class="color-info">
+          <div class="color-name">Navy</div>
+          <div class="color-hex">#0b1f3a</div>
+          <div class="color-use">Product canvas, consultant primary, deep backgrounds</div>
+        </div>
+      </div>
+      <div class="color-swatch">
+        <div class="color-fill" style="background:#1e90ff"></div>
+        <div class="color-info">
+          <div class="color-name">Signal Blue</div>
+          <div class="color-hex">#1e90ff</div>
+          <div class="color-use">Accent, interactive elements, findings, the logomark core</div>
+        </div>
+      </div>
+      <div class="color-swatch">
+        <div class="color-fill" style="background:#4a5568"></div>
+        <div class="color-info">
+          <div class="color-name">Slate</div>
+          <div class="color-hex">#4a5568</div>
+          <div class="color-use">Body text, secondary information, muted labels</div>
+        </div>
+      </div>
+      <div class="color-swatch">
+        <div class="color-fill" style="background:#f5f7fa"></div>
+        <div class="color-info">
+          <div class="color-name">Off-white</div>
+          <div class="color-hex">#f5f7fa</div>
+          <div class="color-use">Content backgrounds, cards, consultant site base</div>
+        </div>
+      </div>
+      <div class="color-swatch">
+        <div class="color-fill" style="background:#2b2b2b"></div>
+        <div class="color-info">
+          <div class="color-name">Charcoal</div>
+          <div class="color-hex">#2b2b2b</div>
+          <div class="color-use">High-contrast text, headlines on light backgrounds</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TYPOGRAPHY -->
+  <section>
+    <div class="section-label">Typography</div>
+    <div class="type-specimens">
+      <div class="type-specimen">
+        <div class="type-name">DM Serif Display — Authority voice (consultant-facing only)</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:28px;color:var(--navy);line-height:1.2">Your data has answers your reports aren't showing you.</div>
+        <div class="type-role">Consultant headlines, article titles, Substack posts. The human voice. <strong>Not used anywhere in the Cygnus product UI.</strong> Reserved for Ricardo Uemura–branded content only.</div>
+      </div>
+      <div class="type-specimen">
+        <div class="type-name">DM Sans 500 — Product voice</div>
+        <div style="font-family:'DM Sans',sans-serif;font-size:22px;font-weight:500;color:var(--navy);letter-spacing:0.02em">Signal detection complete. 8 findings across 3 modules.</div>
+        <div class="type-role">Cygnus UI headings, step titles, navigation, buttons. Clean, operational, no personality — the machine speaking.</div>
+      </div>
+      <div class="type-specimen">
+        <div class="type-name">JetBrains Mono — Data voice</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--blue);letter-spacing:0.04em">COGS_DRIFT · 75%→92% · SEVERITY:HIGH · R$9.2B impact</div>
+        <div class="type-role">Finding codes, metric values, risk scores, section labels, tags. Signals technical precision. Used heavily in product, sparingly on consultant site.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- USAGE -->
+  <section>
+    <div class="section-label">Usage guidelines</div>
+    <div class="usage-grid">
+      <div class="usage-card do">
+        <h4>Clear space</h4>
+        <p>Maintain a minimum clear space around the mark equal to the diameter of the core circle. The mark needs room to breathe — especially at small sizes.</p>
+      </div>
+      <div class="usage-card do">
+        <h4>Background rules</h4>
+        <p>Use the dark variant on navy or dark backgrounds. Use the light variant on white or off-white backgrounds. Never place the mark on busy images or patterns.</p>
+      </div>
+      <div class="usage-card do">
+        <h4>Mark alone is fine</h4>
+        <p>The accretion disk mark works standalone (without "CYGNUS" wordmark) for favicons, app icons, loading states, and inline references. It's designed to be recognizable at 16px.</p>
+      </div>
+      <div class="usage-card do">
+        <h4>With "Ricardo Uemura"</h4>
+        <p>When the consultant brand and product brand appear together: "Ricardo Uemura" in DM Serif Display (editorial/consultant context), then "powered by Cygnus" or "built with Cygnus" in DM Sans + blue accent. DM Serif Display never appears inside the Cygnus product itself.</p>
+      </div>
+      <div class="usage-card dont">
+        <h4>Don't rotate or skew</h4>
+        <p>The ellipses represent a specific viewing angle of the accretion disk. Rotating the mark breaks the metaphor and looks like a generic target.</p>
+      </div>
+      <div class="usage-card dont">
+        <h4>Don't change the blue</h4>
+        <p>Signal Blue (#1e90ff) is the core brand color. Don't substitute with other blues, gradients, or color effects. The opacity layers in the mark are carefully calibrated.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

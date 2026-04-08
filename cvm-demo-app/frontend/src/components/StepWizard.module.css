@@ -19,12 +19,10 @@
   flex-direction: column;
 }
 
-.title {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: #ffffff;
-  font-family: 'DM Sans', sans-serif;
-  letter-spacing: 0.01em;
+.logo {
+  height: 28px;
+  width: auto;
+  display: block;
 }
 
 .subtitle {

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Cygnus Mark — Standalone (transparent bg, works on dark or light) -->
+  <g transform="translate(32, 32)">
+    <ellipse cx="0" cy="0" rx="28" ry="9" fill="none" stroke="#1e90ff" stroke-width="0.9" opacity="0.12"/>
+    <ellipse cx="0" cy="0" rx="21" ry="7" fill="none" stroke="#1e90ff" stroke-width="1.0" opacity="0.22"/>
+    <ellipse cx="0" cy="0" rx="14" ry="4.8" fill="none" stroke="#1e90ff" stroke-width="1.2" opacity="0.38"/>
+    <circle cx="0" cy="0" r="5.5" fill="#1e90ff"/>
+    <circle cx="0" cy="0" r="2.2" fill="#0b1f3a"/>
+  </g>
+</svg>

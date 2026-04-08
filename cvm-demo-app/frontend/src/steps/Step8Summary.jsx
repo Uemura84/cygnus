@@ -98,12 +98,13 @@ export default function Step8Summary({ stepState, data }) {
             style={{
               padding: '10px 24px',
               borderRadius: '8px',
-              background: hasStep6Context ? '#2563eb' : '#e2e8f0',
-              color: hasStep6Context ? '#fff' : '#94a3b8',
+              background: hasStep6Context ? 'var(--blue)' : 'rgba(11,31,58,0.06)',
+              color: hasStep6Context ? '#fff' : 'var(--gray)',
               border: 'none',
               cursor: hasStep6Context ? 'pointer' : 'not-allowed',
-              fontWeight: 700,
+              fontWeight: 600,
               fontSize: '0.9rem',
+              fontFamily: "'DM Sans', sans-serif",
             }}
           >
             {t.step8.run_button ?? 'Generate Summary'}
@@ -114,7 +115,7 @@ export default function Step8Summary({ stepState, data }) {
             </p>
           )}
           {status === 'error' && (
-            <p style={{ fontSize: '0.78rem', color: '#dc2626', marginTop: '8px' }}>
+            <p style={{ fontSize: '0.78rem', color: '#E24B4A', marginTop: '8px' }}>
               {t.error?.connection_error ?? 'Connection error'} — try again.
             </p>
           )}
@@ -125,13 +126,13 @@ export default function Step8Summary({ stepState, data }) {
       {status !== 'idle' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '0.8rem' }}>
           {status === 'connecting' && (
-            <span style={{ color: '#f59e0b' }}>⏳ {t.step8.running ?? 'Generating executive summary...'}</span>
+            <span style={{ color: '#EF9F27', fontFamily: "'JetBrains Mono', monospace" }}>⏳ {t.step8.running ?? 'Generating executive summary...'}</span>
           )}
           {status === 'streaming' && (
-            <span style={{ color: '#2563eb' }}>● {t.step8.running ?? 'Generating executive summary...'}</span>
+            <span style={{ color: 'var(--blue)', fontFamily: "'JetBrains Mono', monospace" }}>● {t.step8.running ?? 'Generating executive summary...'}</span>
           )}
           {status === 'done' && (
-            <span style={{ color: '#16a34a' }}>✓ Complete</span>
+            <span style={{ color: 'var(--blue)', fontFamily: "'JetBrains Mono', monospace" }}>✓ Complete</span>
           )}
         </div>
       )}
@@ -151,7 +152,7 @@ export default function Step8Summary({ stepState, data }) {
             fontSize: '1rem',
             lineHeight: 1.8,
             color: 'var(--charcoal)',
-            fontFamily: "'DM Serif Display', serif",
+            fontFamily: "'DM Sans', sans-serif",
           }}
         >
           <MarkdownView text={text || data?.data?.response_text || ''} />

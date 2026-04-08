@@ -1,8 +1,12 @@
 import asyncio
 import json
+import logging
+import re
 import time
 import unicodedata
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -175,6 +179,85 @@ def run_step(step_number: int):
 # WebSocket — Step 9 LLM streaming
 # ---------------------------------------------------------------------------
 
+def _fix_literal_newlines(s: str) -> str:
+    """Replace bare newlines/tabs inside JSON string values with their escape sequences.
+
+    Claude sometimes streams actual \\n characters inside multi-line string fields
+    (full_narrative, explanation) rather than the JSON escape sequence \\\\n,
+    producing invalid JSON that json.loads() rejects.
+    """
+    out: list[str] = []
+    in_string = False
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        if ch == "\\" and in_string:
+            # Valid escape sequence — pass both chars through unchanged
+            out.append(ch)
+            if i + 1 < len(s):
+                out.append(s[i + 1])
+            i += 2
+            continue
+        if ch == '"':
+            in_string = not in_string
+            out.append(ch)
+            i += 1
+            continue
+        if in_string:
+            if ch == "\n":
+                out.append("\\n")
+                i += 1
+                continue
+            if ch == "\r":
+                out.append("\\r")
+                i += 1
+                continue
+            if ch == "\t":
+                out.append("\\t")
+                i += 1
+                continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _clean_step7_json(raw: str) -> str:
+    """Strip markdown fences, fix bare newlines, validate with json.loads, re-emit with json.dumps.
+
+    Returns a guaranteed-valid JSON string, or the best-effort cleaned text if all
+    parsing attempts fail (frontend fallback handles that case).
+    """
+    # 1. Strip markdown code fences (Claude often wraps output in ```json ... ```)
+    cleaned = re.sub(r"^```json\s*$", "", raw, flags=re.MULTILINE | re.IGNORECASE)
+    cleaned = re.sub(r"^```\s*$", "", cleaned, flags=re.MULTILINE)
+    cleaned = cleaned.strip()
+
+    # 2. Extract outermost JSON object if there is preamble text
+    first_brace = cleaned.find("{")
+    last_brace = cleaned.rfind("}")
+    if first_brace != -1 and last_brace > first_brace:
+        cleaned = cleaned[first_brace : last_brace + 1]
+
+    # 3. Try direct parse first (clean JSON needs no fixup)
+    try:
+        data = json.loads(cleaned)
+        return json.dumps(data, ensure_ascii=False)
+    except json.JSONDecodeError as e:
+        logger.warning("Step 7 direct JSON parse failed (%s) — trying literal-newline fix", e)
+        logger.debug("Step 7 raw first 300 chars: %s", cleaned[:300])
+        logger.debug("Step 7 raw last 300 chars: %s", cleaned[-300:])
+
+    # 4. Fix bare newlines inside string values, then retry
+    fixed = _fix_literal_newlines(cleaned)
+    try:
+        data = json.loads(fixed)
+        logger.info("Step 7 JSON parsed OK after literal-newline fix")
+        return json.dumps(data, ensure_ascii=False)
+    except json.JSONDecodeError as e:
+        logger.error("Step 7 JSON parse failed even after fix (%s) — returning best-effort", e)
+        return fixed  # frontend will fall back to MarkdownView
+
+
 @app.websocket("/ws/llm")
 async def llm_stream(websocket: WebSocket):
     await websocket.accept()
@@ -183,19 +266,24 @@ async def llm_stream(websocket: WebSocket):
         step = payload.get("step", 9)
 
         if step == 7:
-            # Industry Specialist Agent — stream and store full response in pipeline_state
+            # Collect full LLM response, clean JSON server-side, then send once.
+            # We do NOT stream tokens to the frontend for step 7 because:
+            # (a) the frontend doesn't display streaming text for this step (only progress
+            #     messages), and (b) cleaning/validating JSON requires the complete text.
             full_text = ""
             async for token in step7_ai_agent.stream(payload, config=app_config):
-                await websocket.send_text(token)
                 full_text += token
-            pipeline_state["step7"] = {"response_text": full_text}
+            cleaned_json = _clean_step7_json(full_text)
+            pipeline_state["step7"] = {"response_text": cleaned_json}
+            await websocket.send_text(cleaned_json)
         elif step == 8:
-            # Executive Summary — merges Step 6 data and Step 7 analysis
+            # Executive Summary — collect full JSON, clean, send once (same pattern as step 7)
             full_text = ""
             async for token in step8_reporting.stream(payload, config=app_config):
-                await websocket.send_text(token)
                 full_text += token
-            pipeline_state["step8"] = {"response_text": full_text}
+            cleaned_json = _clean_step7_json(full_text)
+            pipeline_state["step8"] = {"response_text": cleaned_json}
+            await websocket.send_text(cleaned_json)
         else:
             # Step 9 Q&A — conversational streaming with pipeline context
             async for token in step9_llm_analysis.stream(

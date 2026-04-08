@@ -4,12 +4,11 @@ import FindingChart from '../components/charts/FindingChart'
 import RiskGauge from '../components/charts/RiskGauge'
 import styles from './Step.module.css'
 
-const SEVERITY_BADGE = { HIGH: styles.badgeHigh, MEDIUM: styles.badgeMedium, LOW: styles.badgeLow }
-const SEVERITY_ORDER = { HIGH: 0, MEDIUM: 1, LOW: 2 }
+const SEVERITY_BADGE = { HIGH: styles.badgeHigh, MEDIUM: styles.badgeMedium, LOW: styles.badgeLow, CRITICAL: styles.badgeHigh }
+const SEVERITY_ORDER = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
 const CONFIDENCE_BADGE = { HIGH: styles.badgeLow, MEDIUM: styles.badgeMedium, LOW: styles.badgeHigh }
 
-// Left border color by severity per design system
-const SEVERITY_BORDER = { HIGH: '#E24B4A', MEDIUM: '#EF9F27', LOW: 'var(--blue)' }
+const SEVERITY_BORDER = { CRITICAL: '#991b1b', HIGH: '#E24B4A', MEDIUM: '#EF9F27', LOW: 'var(--blue)' }
 
 function formatKey(key) {
   return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -21,29 +20,44 @@ function formatDpValue(val) {
   return String(val)
 }
 
+// Module grouping configuration
+const MODULE_ORDER = ['profitability', 'balance_sheet_health', 'cash_flow_quality', 'stacked']
+
+// All module headers use navy. Modules are differentiated by Signal Blue left border opacity.
+const MODULE_STYLE = {
+  profitability: {
+    headerColor: '#fff',
+    headerBg: 'var(--navy)',
+    headerBorder: 'var(--blue)',         // full opacity — primary module
+    accentBorder: 'rgba(30,144,255,1.0)',
+  },
+  balance_sheet_health: {
+    headerColor: '#fff',
+    headerBg: 'var(--navy)',
+    headerBorder: 'rgba(30,144,255,0.55)', // 55% opacity
+    accentBorder: 'rgba(30,144,255,0.55)',
+  },
+  cash_flow_quality: {
+    headerColor: '#fff',
+    headerBg: 'var(--navy)',
+    headerBorder: 'rgba(30,144,255,0.35)', // 35% opacity
+    accentBorder: 'rgba(30,144,255,0.35)',
+  },
+  stacked: {
+    headerColor: '#fff',
+    headerBg: 'var(--navy)',
+    headerBorder: 'var(--blue)',         // full opacity — diagnoses are prominent
+    accentBorder: 'var(--blue)',
+  },
+}
+
 const CATEGORY_ORDER = ['core', 'supporting', 'contextual', 'anomalies']
 
 const CATEGORY_STYLE = {
-  core: {
-    border: '2px solid #2563eb',
-    background: '#eff6ff',
-    titleColor: '#1d4ed8',
-  },
-  supporting: {
-    border: '1px solid #e2e8f0',
-    background: '#fff',
-    titleColor: '#334155',
-  },
-  contextual: {
-    border: '1px solid #e2e8f0',
-    background: '#f8fafc',
-    titleColor: '#64748b',
-  },
-  anomalies: {
-    border: '1px solid #fde68a',
-    background: '#fffbeb',
-    titleColor: '#92400e',
-  },
+  core: { border: '2px solid var(--blue)', background: 'var(--blue-dim)', titleColor: 'var(--blue)' },
+  supporting: { border: '1px solid rgba(11,31,58,0.07)', background: '#fff', titleColor: 'var(--charcoal)' },
+  contextual: { border: '1px solid rgba(11,31,58,0.07)', background: 'var(--offwhite)', titleColor: 'var(--gray)' },
+  anomalies: { border: '1px solid rgba(239,159,39,0.3)', background: 'rgba(239,159,39,0.05)', titleColor: '#EF9F27' },
 }
 
 export default function Step6CoreAnalysis({ stepState, data }) {
@@ -65,26 +79,50 @@ export default function Step6CoreAnalysis({ stepState, data }) {
     }
   }
 
-  // All finding ids not in any category go to contextual
-  const allIds = d?.findings?.map(f => f.id) ?? []
-  for (const id of allIds) {
-    if (!findingCategory[id]) findingCategory[id] = 'contextual'
+  // Group findings by module
+  const byModule = { profitability: [], balance_sheet_health: [], cash_flow_quality: [], stacked: [] }
+  if (d?.findings) {
+    for (const f of d.findings) {
+      const mod = f.module || 'profitability'
+      if (mod in byModule) {
+        byModule[mod].push(f)
+      } else {
+        byModule.profitability.push(f)
+      }
+    }
   }
 
-  // Group findings by category
-  const byCategory = { core: [], supporting: [], contextual: [], anomalies: [] }
-  if (d?.finding_categories) {
-    for (const cat of CATEGORY_ORDER) {
-      byCategory[cat] = (d.finding_categories[cat] ?? [])
-        .map(id => findingById[id])
-        .filter(Boolean)
-        .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 3) - (SEVERITY_ORDER[b.severity] ?? 3))
+  // For profitability: sub-group by category (core/supporting/contextual/anomalies)
+  const profByCategory = { core: [], supporting: [], contextual: [], anomalies: [] }
+  for (const f of byModule.profitability) {
+    const cat = findingCategory[f.id] || 'contextual'
+    if (cat in profByCategory) {
+      profByCategory[cat].push(f)
+    } else {
+      profByCategory.contextual.push(f)
     }
-  } else if (d?.findings) {
-    // Fallback: no categories, show all as supporting
-    byCategory.supporting = [...d.findings].sort(
-      (a, b) => (SEVERITY_ORDER[a.severity] ?? 3) - (SEVERITY_ORDER[b.severity] ?? 3)
-    )
+  }
+  for (const cat of CATEGORY_ORDER) {
+    profByCategory[cat].sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
+  }
+
+  // For BS and CF: sort by severity only
+  byModule.balance_sheet_health.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
+  byModule.cash_flow_quality.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
+  byModule.stacked.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
+
+  const MODULE_LABEL = {
+    profitability: t.step6.module_profitability ?? 'Profitability Analysis',
+    balance_sheet_health: t.step6.module_balance_sheet ?? 'Balance Sheet Health',
+    cash_flow_quality: t.step6.module_cash_flow ?? 'Cash Flow Quality',
+    stacked: t.step6.module_diagnoses ?? 'Cross-Module Diagnoses',
+  }
+
+  const MODULE_COUNT_LABEL = {
+    profitability: d?.profitability_findings_count,
+    balance_sheet_health: d?.bs_findings_count,
+    cash_flow_quality: d?.cf_findings_count,
+    stacked: d?.stacked_diagnoses_count,
   }
 
   const CATEGORY_LABEL = {
@@ -118,6 +156,24 @@ export default function Step6CoreAnalysis({ stepState, data }) {
             )}
           </div>
 
+          {/* Module counts summary */}
+          {(d.bs_findings_count > 0 || d.cf_findings_count > 0 || d.stacked_diagnoses_count > 0) && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+              {d.profitability_findings_count > 0 && (
+                <ModuleCountBadge label={MODULE_LABEL.profitability} count={d.profitability_findings_count} opacity={1} />
+              )}
+              {d.bs_findings_count > 0 && (
+                <ModuleCountBadge label={MODULE_LABEL.balance_sheet_health} count={d.bs_findings_count} opacity={0.55} />
+              )}
+              {d.cf_findings_count > 0 && (
+                <ModuleCountBadge label={MODULE_LABEL.cash_flow_quality} count={d.cf_findings_count} opacity={0.35} />
+              )}
+              {d.stacked_diagnoses_count > 0 && (
+                <ModuleCountBadge label={MODULE_LABEL.stacked} count={d.stacked_diagnoses_count} opacity={1} />
+              )}
+            </div>
+          )}
+
           {/* Composite signals */}
           {d.composite_signals?.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
@@ -133,32 +189,197 @@ export default function Step6CoreAnalysis({ stepState, data }) {
             </div>
           )}
 
-          {/* Findings by category */}
+          {/* Findings grouped by module */}
           <div className={styles.section}>
             <h3 className={styles.sectionTitle}>{t.step6.findings_title}</h3>
-            {CATEGORY_ORDER.map((cat) => {
-              const catFindings = byCategory[cat]
-              if (!catFindings?.length) return null
-              const cs = CATEGORY_STYLE[cat]
-              return (
-                <div key={cat} style={{ marginBottom: '24px' }}>
-                  <h4 style={{ fontSize: '0.68rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.13em', color: 'var(--blue)', fontFamily: "'JetBrains Mono', monospace", marginBottom: '10px' }}>
-                    {CATEGORY_LABEL[cat]}
-                  </h4>
-                  {catFindings.map((f) => (
-                    <FindingCard
-                      key={f.id}
-                      f={f}
-                      cardStyle={cs}
-                      timeSeries={timeSeries}
-                      t={t}
-                    />
-                  ))}
-                </div>
-              )
-            })}
-          </div>
 
+            {/* Module 1: Profitability — sub-grouped by category */}
+            {byModule.profitability.length > 0 && (
+              <ModuleSection
+                label={MODULE_LABEL.profitability}
+                count={d.profitability_findings_count}
+                moduleStyle={MODULE_STYLE.profitability}
+              >
+                {CATEGORY_ORDER.map((cat) => {
+                  const catFindings = profByCategory[cat]
+                  if (!catFindings?.length) return null
+                  return (
+                    <div key={cat} style={{ marginBottom: '20px' }}>
+                      <h5 style={{ fontSize: '0.66rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.13em', color: 'var(--blue)', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>
+                        {CATEGORY_LABEL[cat]}
+                      </h5>
+                      {catFindings.map((f) => (
+                        <FindingCard key={f.id} f={f} cardStyle={CATEGORY_STYLE[cat]} timeSeries={timeSeries} t={t} />
+                      ))}
+                    </div>
+                  )
+                })}
+              </ModuleSection>
+            )}
+
+            {/* Module 2: Balance Sheet Health */}
+            {byModule.balance_sheet_health.length > 0 && (
+              <ModuleSection
+                label={MODULE_LABEL.balance_sheet_health}
+                count={d.bs_findings_count}
+                moduleStyle={MODULE_STYLE.balance_sheet_health}
+              >
+                {byModule.balance_sheet_health.map((f) => (
+                  <FindingCard key={f.id} f={f} cardStyle={{ border: '1px solid var(--blue-line)', background: '#fff' }} timeSeries={timeSeries} t={t} />
+                ))}
+              </ModuleSection>
+            )}
+
+            {/* Module 3: Cash Flow Quality */}
+            {byModule.cash_flow_quality.length > 0 && (
+              <ModuleSection
+                label={MODULE_LABEL.cash_flow_quality}
+                count={d.cf_findings_count}
+                moduleStyle={MODULE_STYLE.cash_flow_quality}
+              >
+                {byModule.cash_flow_quality.map((f) => (
+                  <FindingCard key={f.id} f={f} cardStyle={{ border: '1px solid rgba(30,144,255,0.15)', background: '#fff' }} timeSeries={timeSeries} t={t} />
+                ))}
+              </ModuleSection>
+            )}
+
+            {/* Cross-Module Diagnoses (stacked) */}
+            {byModule.stacked.length > 0 && (
+              <ModuleSection
+                label={MODULE_LABEL.stacked}
+                count={d.stacked_diagnoses_count}
+                moduleStyle={MODULE_STYLE.stacked}
+                isdiagnosis
+              >
+                {byModule.stacked.map((f) => (
+                  <DiagnosisCard key={f.id} f={f} t={t} />
+                ))}
+              </ModuleSection>
+            )}
+
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ModuleCountBadge({ label, count, opacity = 1 }) {
+  const border = opacity < 1 ? `rgba(30,144,255,${opacity})` : 'var(--blue)'
+  return (
+    <span style={{
+      fontSize: '0.72rem',
+      fontWeight: 600,
+      color: 'var(--blue)',
+      background: 'var(--blue-dim)',
+      border: `1px solid ${border}`,
+      borderRadius: '12px',
+      padding: '3px 10px',
+      fontFamily: "'JetBrains Mono', monospace",
+      opacity: opacity < 1 ? 0.7 + (0.3 * opacity) : 1,
+    }}>
+      {label}: {count}
+    </span>
+  )
+}
+
+function ModuleSection({ label, count, moduleStyle, isdiagnosis, children }) {
+  const [collapsed, setCollapsed] = useState(false)
+  return (
+    <div style={{ marginBottom: '28px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(11,31,58,0.1)', borderLeft: `4px solid ${moduleStyle.accentBorder}` }}>
+      <button
+        onClick={() => setCollapsed(v => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+          padding: '10px 16px',
+          background: moduleStyle.headerBg,
+          border: 'none',
+          cursor: 'pointer',
+          color: moduleStyle.headerColor,
+          fontWeight: 700,
+          fontSize: '0.82rem',
+          textAlign: 'left',
+          letterSpacing: isdiagnosis ? '0.03em' : '0',
+        }}
+      >
+        <span>{label} {count != null && <span style={{ fontWeight: 400, opacity: 0.75 }}>({count})</span>}</span>
+        <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>{collapsed ? '▶' : '▼'}</span>
+      </button>
+      {!collapsed && (
+        <div style={{ padding: '16px' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DiagnosisCard({ f, t }) {
+  const [expanded, setExpanded] = useState(true)
+  const borderColor = SEVERITY_BORDER[f.severity] || 'var(--blue)'
+  const contributing = f.contributing_signals
+
+  return (
+    <div style={{
+      marginBottom: '12px',
+      background: 'var(--blue-dim)',
+      border: '1px solid var(--blue-line)',
+      borderLeft: `4px solid ${borderColor}`,
+      borderRadius: '6px',
+      padding: '14px 16px',
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '0.7rem',
+          color: 'var(--blue)',
+          background: 'var(--blue-dim)',
+          padding: '2px 7px',
+          borderRadius: '4px',
+          flexShrink: 0,
+          letterSpacing: '0.03em',
+        }}>{f.id}</span>
+        <strong style={{ fontSize: '0.88rem', color: 'var(--navy)' }}>{f.pattern}</strong>
+        <span className={SEVERITY_BADGE[f.severity]}>{f.severity}</span>
+      </div>
+
+      {/* Description */}
+      <p style={{ fontSize: '0.84rem', color: 'var(--charcoal)', marginBottom: '10px', lineHeight: 1.55 }}>{f.description}</p>
+
+      {/* Contributing signals */}
+      {contributing && Object.keys(contributing).length > 0 && (
+        <div>
+          <button
+            style={{ fontSize: '0.75rem', color: 'var(--blue)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '8px' }}
+            onClick={() => setExpanded(v => !v)}
+          >
+            {expanded
+              ? (t.step6.hide_signals ?? '▼ Hide contributing signals')
+              : (t.step6.show_signals ?? '▶ Show contributing signals')}
+          </button>
+          {expanded && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {Object.entries(contributing).map(([moduleName, signals]) =>
+                signals.map((s, i) => (
+                  <span key={`${moduleName}-${i}`} style={{
+                    fontSize: '0.72rem',
+                    background: 'var(--blue-dim)',
+                    color: 'var(--blue)',
+                    border: '1px solid var(--blue-line)',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}>
+                    {s.code || s.signal} <span style={{ opacity: 0.65 }}>({moduleName})</span>
+                  </span>
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -199,7 +420,7 @@ function FindingCard({ f, cardStyle, timeSeries, t }) {
           </span>
         )}
         {f.period && (
-          <span style={{ fontSize: '0.78rem', color: '#64748b', background: '#f1f5f9', borderRadius: '4px', padding: '2px 8px' }}>
+          <span style={{ fontSize: '0.78rem', color: 'var(--gray)', background: 'var(--offwhite)', borderRadius: '4px', padding: '2px 8px' }}>
             {f.period}
           </span>
         )}
@@ -208,23 +429,23 @@ function FindingCard({ f, cardStyle, timeSeries, t }) {
       {/* Estimated Impact */}
       {f.estimated_impact && (
         <div style={{
-          background: '#fffbeb',
-          border: '1px solid #fde68a',
+          background: 'rgba(239,159,39,0.07)',
+          border: '1px solid rgba(239,159,39,0.3)',
           borderRadius: '6px',
           padding: '8px 12px',
           marginBottom: '10px',
         }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#92400e' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#EF9F27' }}>
               {t.materiality?.estimated_impact ?? 'Estimated Impact'}
             </span>
-            <strong style={{ fontSize: '1rem', color: '#78350f' }}>{f.estimated_impact.formatted}</strong>
+            <strong style={{ fontSize: '1rem', color: 'var(--navy)' }}>{f.estimated_impact.formatted}</strong>
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#a16207', marginTop: '2px' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--gray)', marginTop: '2px' }}>
             <span style={{ fontWeight: 600 }}>{t.materiality?.basis ?? 'Basis'}:</span>{' '}
             <span
               title={f.estimated_impact.caveat}
-              style={{ cursor: 'help', borderBottom: '1px dotted #a16207' }}
+              style={{ cursor: 'help', borderBottom: '1px dotted rgba(239,159,39,0.5)' }}
             >
               {f.estimated_impact.basis}
             </span>
@@ -233,7 +454,7 @@ function FindingCard({ f, cardStyle, timeSeries, t }) {
       )}
 
       {/* Description */}
-      <p style={{ fontSize: '0.84rem', color: '#475569', marginBottom: '8px', lineHeight: 1.55 }}>{f.description}</p>
+      <p style={{ fontSize: '0.84rem', color: 'var(--gray)', marginBottom: '8px', lineHeight: 1.55 }}>{f.description}</p>
 
       {/* Data points */}
       {f.data_points && Object.keys(f.data_points).length > 0 && (
@@ -241,9 +462,9 @@ function FindingCard({ f, cardStyle, timeSeries, t }) {
           {Object.entries(f.data_points)
             .filter(([k]) => k !== 'period')
             .map(([k, v]) => (
-              <span key={k} style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                <span style={{ color: '#94a3b8' }}>{formatKey(k)}:</span>{' '}
-                <strong style={{ color: '#334155' }}>{formatDpValue(v)}</strong>
+              <span key={k} style={{ fontSize: '0.78rem', color: 'var(--gray)' }}>
+                <span style={{ color: 'rgba(11,31,58,0.3)' }}>{formatKey(k)}:</span>{' '}
+                <strong style={{ color: 'var(--charcoal)' }}>{formatDpValue(v)}</strong>
               </span>
             ))}
         </div>
@@ -251,7 +472,7 @@ function FindingCard({ f, cardStyle, timeSeries, t }) {
 
       {/* Chart toggle */}
       <button
-        style={{ fontSize: '0.78rem', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        style={{ fontSize: '0.78rem', color: 'var(--blue)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
         onClick={() => setShowChart(prev => !prev)}
       >
         {showChart ? t.step6.hide_chart : t.step6.show_chart}

@@ -16,15 +16,15 @@ export default function MarginTrajectory({ data, labels = {} }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={data} margin={{ top: 8, right: 64, bottom: 8, left: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,31,58,0.06)" />
+        <XAxis dataKey="period" tick={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }} />
 
         {/* Left axis: Gross + EBIT Margin */}
         <YAxis
           yAxisId="margins"
           unit="%"
           domain={[-10, 40]}
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
           tickCount={6}
         />
         {/* Right axis: COGS / Revenue */}
@@ -33,7 +33,7 @@ export default function MarginTrajectory({ data, labels = {} }) {
           orientation="right"
           unit="%"
           domain={[60, 100]}
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
           tickCount={5}
         />
 
@@ -44,14 +44,14 @@ export default function MarginTrajectory({ data, labels = {} }) {
         <ReferenceLine
           yAxisId="margins"
           y={0}
-          stroke="#94a3b8"
+          stroke="rgba(11,31,58,0.2)"
           strokeDasharray="4 2"
           strokeWidth={1}
           label={{
             value: labels.breakeven ?? 'Breakeven',
             position: 'insideBottomRight',
             fontSize: 9,
-            fill: '#94a3b8',
+            fill: 'rgba(11,31,58,0.2)',
           }}
         />
 
@@ -60,7 +60,7 @@ export default function MarginTrajectory({ data, labels = {} }) {
           type="monotone"
           dataKey="Gross_Margin_pct"
           name={labels.grossMargin ?? 'Gross Margin %'}
-          stroke="#2563eb"
+          stroke="#1e90ff"
           strokeWidth={2}
           dot={{ r: 3 }}
         />
@@ -69,7 +69,7 @@ export default function MarginTrajectory({ data, labels = {} }) {
           type="monotone"
           dataKey="EBIT_Margin_pct"
           name={labels.ebitMargin ?? 'EBIT Margin %'}
-          stroke="#7c3aed"
+          stroke="rgba(30,144,255,0.55)"
           strokeWidth={2}
           dot={{ r: 3 }}
         />
@@ -78,7 +78,7 @@ export default function MarginTrajectory({ data, labels = {} }) {
           type="monotone"
           dataKey="COGS_pct_Revenue"
           name={labels.cogsRevenue ?? 'COGS / Revenue %'}
-          stroke="#dc2626"
+          stroke="#E24B4A"
           strokeWidth={2.5}
           dot={{ r: 3 }}
         />

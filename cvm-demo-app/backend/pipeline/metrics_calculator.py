@@ -25,7 +25,7 @@ import pandas as pd
 
 # Resolve models package regardless of working directory
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from models import Company, Period, IncomeStatement, CompanyFinancials
+from models import Company, Period, IncomeStatement, BalanceSheet, CashFlow, CompanyFinancials
 
 # Matching the original 01_download_and_parse.py constant exactly
 DRE_ACCOUNTS = {
@@ -373,17 +373,20 @@ def dataframe_to_company_financials(
     df: pd.DataFrame,
     company_name: str,
     sector_map: dict | None = None,
+    balance_sheets: list | None = None,
+    cash_flows: list | None = None,
 ) -> CompanyFinancials:
     """Convert the enriched metrics DataFrame into CompanyFinancials.
 
     Args:
-        df:           Output of compute_metrics() — one row per (company, period, doc_type).
-        company_name: Display name (e.g. "BRASKEM S.A.").
-        sector_map:   Optional SECTOR_MAP from enrichment.py for sector lookup.
+        df:             Output of compute_metrics() — one row per (company, period, doc_type).
+        company_name:   Display name (e.g. "BRASKEM S.A.").
+        sector_map:     Optional SECTOR_MAP from enrichment.py for sector lookup.
+        balance_sheets: Optional list of BalanceSheet objects (from parse_balance_sheets).
+        cash_flows:     Optional list of CashFlow objects (from parse_cash_flows).
 
     Returns:
-        CompanyFinancials with income_statements populated, balance_sheets=None,
-        cash_flows=None (Sprint 2).
+        CompanyFinancials with all available statements populated.
     """
     sector_map = sector_map or {}
     company_key = company_name.split()[0].upper()
@@ -480,10 +483,23 @@ def dataframe_to_company_financials(
         dates = [s.period.date for s in income_statements]
         period_range = (min(dates), max(dates))
 
+    bs_list = balance_sheets or []
+    cf_list = cash_flows or []
+
+    stmts_available = ["income_statement"]
+    if bs_list:
+        stmts_available.append("balance_sheet")
+    if cf_list:
+        stmts_available.append("cash_flow")
+
     data_completeness = {
-        "income_statements": len(income_statements),
-        "balance_sheets": 0,
-        "cash_flows": 0,
+        "income_statement": True,
+        "balance_sheet": len(bs_list) > 0,
+        "cash_flow": len(cf_list) > 0,
+        "statements_available": stmts_available,
+        "income_statement_periods": len(income_statements),
+        "balance_sheet_periods": len(bs_list),
+        "cash_flow_periods": len(cf_list),
         "has_da": any(s.depreciation_amortization is not None for s in income_statements),
         "has_ebitda": any(s.ebitda is not None for s in income_statements),
     }
@@ -491,11 +507,521 @@ def dataframe_to_company_financials(
     return CompanyFinancials(
         company=company_obj,
         income_statements=income_statements,
-        balance_sheets=None,
-        cash_flows=None,
+        balance_sheets=bs_list if bs_list else None,
+        cash_flows=cf_list if cf_list else None,
         source="cvm",
         source_version="dfp_itr_v1",
         period_range=period_range,
         granularity=granularities,
         data_completeness=data_completeness,
     )
+
+
+# =============================================================================
+# Sprint 2 — Balance Sheet + Cash Flow Parsing
+# =============================================================================
+
+# Holding-entity exclusion (kept in sync with data_cleaner.py EXCLUDE_MAP)
+_BS_EXCLUDE_MAP: dict[str, list[str]] = {
+    "BRASKEM":    [],
+    "SUZANO":     ["SUZANO HOLDING"],
+    "GERDAU":     ["METALURGICA GERDAU"],
+    "VOTORANTIM": [],
+}
+
+# BPA (assets) account codes → BalanceSheet field names
+# Verified against Braskem, Vale, and Votorantim 2023 DFP filings.
+_BPA_CODES: dict[str, str] = {
+    "1":       "total_assets",
+    "1.01":    "current_assets",
+    "1.01.01": "cash_and_equivalents",
+    "1.01.03": "accounts_receivable",
+    "1.01.04": "inventories",
+    "1.02":    "non_current_assets",
+    "1.02.03": "property_plant_equipment",
+    "1.02.04": "intangible_assets",
+}
+
+# BPP (liabilities + equity) account codes → BalanceSheet field names.
+# Note: account "2" = Passivo Total = liabilities + equity (NOT stored).
+# total_liabilities is computed as current_liabilities + non_current_liabilities.
+_BPP_CODES: dict[str, str] = {
+    "2.01":    "current_liabilities",
+    "2.01.02": "accounts_payable",
+    "2.01.04": "short_term_debt",
+    "2.02":    "non_current_liabilities",
+    "2.02.01": "long_term_debt",
+    "2.03":    "total_equity",
+}
+
+# All directly-mapped BS fields (BPA + BPP); used for fields_mapped stats.
+_BS_MAPPED_FIELDS: list[str] = list(_BPA_CODES.values()) + list(_BPP_CODES.values())
+
+# Full BS field metadata for the mapping transparency panel (includes computed/unmapped fields).
+_BS_ALL_FIELDS_META: list[dict] = (
+    [{"field": v, "cvm_code": k} for k, v in _BPA_CODES.items()] +
+    [{"field": v, "cvm_code": k} for k, v in _BPP_CODES.items()] +
+    [{"field": "total_liabilities",  "cvm_code": "derived"}] +
+    [{"field": "retained_earnings",  "cvm_code": "2.03.04"}]   # tracked but not mapped
+)
+
+# CF sub-account fields tracked in loading stats.
+_CF_SUB_ACCOUNTS: list[str] = [
+    "depreciation_amortization", "capex", "acquisitions",
+    "debt_issuance", "debt_repayment", "dividends_paid",
+]
+
+# DFC top-level codes → CashFlow field names (standardised across companies)
+_DFC_TOP_CODES: dict[str, str] = {
+    "6.01": "operating_cash_flow",
+    "6.02": "investing_cash_flow",
+    "6.03": "financing_cash_flow",
+}
+
+# Keyword lists for DFC sub-account matching (case-insensitive partial match).
+# Verified against Braskem, Vale, and Votorantim 2023 DFP/ITR filings.
+_CAPEX_KEYWORDS    = ["imobilizado", "intangível"]
+_CAPEX_EXCLUDE     = ["venda", "recebimento", "recursos recebidos", "alienação"]
+_DA_KEYWORDS       = ["depreciação", "amortização", "exaustão"]
+_DEBT_ISS_KEYWORDS = ["captações", "captação", "adições", "ingressos de empréstimos"]
+_DEBT_REP_KEYWORDS = ["(pagamentos)", "baixas", "liquidação de empréstimos",
+                      "pagamento de empréstimos", "amortização de empréstimos"]
+_DEBT_REP_EXCLUDE  = ["arrendamento"]  # avoid matching lease repayments
+_DIV_KEYWORDS      = ["dividendos", "jcp pagos", "juros sobre capital próprio pagos"]
+_ACQUIS_KEYWORDS   = ["controladas", "subsidiária", "coligadas", "aquisição de invest"]
+_ACQUIS_EXCLUDE    = ["imobilizado", "intangível"]
+
+
+def _read_statement_from_zips(
+    company_name: str,
+    data_dir: Path,
+    years: list,
+    file_type: str,  # e.g. "bpa_con", "bpp_con", "dfc_mi_con"
+) -> pd.DataFrame:
+    """Read all *_file_type_*.csv files from DFP/ITR ZIPs, filtered to company."""
+    company_key = _company_search_key(company_name)
+    exclude     = _BS_EXCLUDE_MAP.get(company_key, [])
+    raw_dir     = data_dir / "raw"
+    frames: list[pd.DataFrame] = []
+
+    for year in years:
+        for doc_type in ("dfp", "itr"):
+            zip_path = raw_dir / f"{doc_type}_cia_aberta_{year}.zip"
+            if not zip_path.exists():
+                continue
+            try:
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    csv_files = [
+                        n for n in zf.namelist()
+                        if file_type.lower() in n.lower() and n.endswith(".csv")
+                    ]
+                    for csv_file in csv_files:
+                        try:
+                            with zf.open(csv_file) as f:
+                                df = pd.read_csv(f, sep=";", encoding="latin-1",
+                                                 low_memory=False)
+                            if "DENOM_CIA" not in df.columns:
+                                continue
+                            # ORDEM_EXERC filter (drop prior-year restated rows)
+                            if "ORDEM_EXERC" in df.columns:
+                                df = df[df["ORDEM_EXERC"] == ORDEM_EXERC_KEEP].copy()
+                            # Company + holding exclusion filter
+                            mask = df["DENOM_CIA"].str.upper().str.contains(
+                                company_key, na=False)
+                            for excl in exclude:
+                                mask &= ~df["DENOM_CIA"].str.upper().str.contains(
+                                    excl, na=False)
+                            df = df[mask].copy()
+                            if not df.empty:
+                                df["_doc_type"] = doc_type.upper()
+                                frames.append(df)
+                        except Exception:
+                            continue
+            except (zipfile.BadZipFile, FileNotFoundError):
+                continue
+
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+
+def parse_balance_sheets(
+    company_name: str,
+    data_dir: Path,
+    years: list,
+) -> tuple:
+    """Parse BPA_con + BPP_con into BalanceSheet objects.
+
+    Balance sheets are point-in-time snapshots — no YTD conversion applied.
+    DFP takes precedence over ITR for the same period + account code.
+    Returns (list[BalanceSheet], bs_stats) sorted by period date.
+    """
+    bpa_raw = _read_statement_from_zips(company_name, data_dir, years, "bpa_con")
+    bpp_raw = _read_statement_from_zips(company_name, data_dir, years, "bpp_con")
+    bpa_records_loaded = len(bpa_raw)
+    bpp_records_loaded = len(bpp_raw)
+
+    _fields_total = len(_BS_MAPPED_FIELDS)
+
+    def _empty_bs_stats() -> dict:
+        return {
+            "bpa_records_loaded": bpa_records_loaded,
+            "bpp_records_loaded": bpp_records_loaded,
+            "records_after_filter": 0,
+            "periods_available": 0,
+            "annual_periods": 0,
+            "quarterly_periods": 0,
+            "fields_mapped": 0,
+            "fields_total": _fields_total,
+        }
+
+    if bpa_raw.empty and bpp_raw.empty:
+        return [], _empty_bs_stats()
+
+    def _pivot_bs(df: pd.DataFrame, code_map: dict) -> pd.DataFrame:
+        """Dedup by (company, period, account) and pivot to one row per period."""
+        if df.empty:
+            return pd.DataFrame()
+        df = df.copy()
+        # Monetary scale normalisation (UNIDADE → thousands)
+        df["VL_CONTA"] = pd.to_numeric(df["VL_CONTA"], errors="coerce")
+        if "ESCALA_MOEDA" in df.columns:
+            df.loc[df["ESCALA_MOEDA"] == "UNIDADE", "VL_CONTA"] /= 1000
+        # DFP/ITR dedup: prefer DFP (priority 0) over ITR (priority 1)
+        df["_row_priority"] = df["_doc_type"].map({"DFP": 0, "ITR": 1}).fillna(1)
+        df = (
+            df.sort_values("_row_priority")
+               .drop_duplicates(subset=["DENOM_CIA", "DT_REFER", "CD_CONTA"], keep="first")
+        )
+        # Filter to desired account codes
+        df = df[df["CD_CONTA"].isin(code_map.keys())].copy()
+        if df.empty:
+            return pd.DataFrame()
+        # Pivot: one row per (company, period)
+        pivot = df.pivot_table(
+            index=["DENOM_CIA", "DT_REFER", "_doc_type"],
+            columns="CD_CONTA",
+            values="VL_CONTA",
+            aggfunc="first",
+        ).reset_index()
+        pivot.columns.name = None
+        pivot.rename(columns=code_map, inplace=True)
+        return pivot
+
+    bpa_pivot = _pivot_bs(bpa_raw, _BPA_CODES)
+    bpp_pivot = _pivot_bs(bpp_raw, _BPP_CODES)
+
+    # Merge assets (BPA) + liabilities/equity (BPP) by period
+    merge_on = ["DENOM_CIA", "DT_REFER", "_doc_type"]
+    if not bpa_pivot.empty and not bpp_pivot.empty:
+        merged = pd.merge(bpa_pivot, bpp_pivot, on=merge_on, how="outer")
+    elif not bpa_pivot.empty:
+        merged = bpa_pivot
+    elif not bpp_pivot.empty:
+        merged = bpp_pivot
+    else:
+        return [], _empty_bs_stats()
+    records_after_filter = len(merged)
+
+    # Compute total_liabilities = current + non_current (balance sheet "2" includes equity)
+    cl  = merged.get("current_liabilities", pd.Series(dtype=float))
+    ncl = merged.get("non_current_liabilities", pd.Series(dtype=float))
+    if cl is not None or ncl is not None:
+        merged["total_liabilities"] = cl.fillna(0) + ncl.fillna(0)
+        # Reset to None when both components are missing
+        if "current_liabilities" in merged.columns and "non_current_liabilities" in merged.columns:
+            both_null = merged["current_liabilities"].isna() & merged["non_current_liabilities"].isna()
+            merged.loc[both_null, "total_liabilities"] = None
+
+    def _f(row, field: str) -> float | None:
+        val = row.get(field)
+        return float(val) if val is not None and pd.notna(val) else None
+
+    balance_sheets: list = []
+    for _, row in merged.iterrows():
+        dt_val = row.get("DT_REFER")
+        if not dt_val:
+            continue
+        try:
+            period_date = pd.to_datetime(dt_val).date()
+        except Exception:
+            continue
+
+        doc_type = str(row.get("_doc_type", "DFP")).upper()
+        granularity = "annual" if doc_type == "DFP" else "quarterly"
+        month_to_q = {3: 1, 6: 2, 9: 3, 12: 4}
+        fiscal_quarter = month_to_q.get(period_date.month) if granularity == "quarterly" else None
+
+        period = Period(
+            date=period_date,
+            granularity=granularity,
+            fiscal_year=period_date.year,
+            fiscal_quarter=fiscal_quarter,
+            is_standalone=True,  # balance sheets are always point-in-time snapshots
+            filing_type=doc_type,
+        )
+        bs = BalanceSheet(
+            company_id=company_name,
+            period=period,
+            total_assets=_f(row, "total_assets"),
+            current_assets=_f(row, "current_assets"),
+            cash_and_equivalents=_f(row, "cash_and_equivalents"),
+            accounts_receivable=_f(row, "accounts_receivable"),
+            inventories=_f(row, "inventories"),
+            non_current_assets=_f(row, "non_current_assets"),
+            property_plant_equipment=_f(row, "property_plant_equipment"),
+            intangible_assets=_f(row, "intangible_assets"),
+            total_liabilities=_f(row, "total_liabilities"),
+            current_liabilities=_f(row, "current_liabilities"),
+            accounts_payable=_f(row, "accounts_payable"),
+            short_term_debt=_f(row, "short_term_debt"),
+            non_current_liabilities=_f(row, "non_current_liabilities"),
+            long_term_debt=_f(row, "long_term_debt"),
+            total_equity=_f(row, "total_equity"),
+        )
+        balance_sheets.append(bs)
+
+    balance_sheets.sort(key=lambda x: x.period.date)
+
+    # --- Loading stats (instrumentation only, no logic change) ---
+    annual_periods   = sum(1 for bs in balance_sheets if bs.period.filing_type == "DFP")
+    quarterly_periods = len(balance_sheets) - annual_periods
+
+    # Per-field status for the mapping transparency panel
+    fields_detail = []
+    for fmeta in _BS_ALL_FIELDS_META:
+        fname    = fmeta["field"]
+        cvm_code = fmeta["cvm_code"]
+        if cvm_code == "derived":
+            status = "computed"
+        elif fname not in _BS_MAPPED_FIELDS:
+            status = "not_found"   # field defined in spec but not implemented
+        elif balance_sheets and any(
+            getattr(bs, fname, None) is not None for bs in balance_sheets
+        ):
+            status = "mapped"
+        else:
+            status = "not_found"
+        fields_detail.append({"field": fname, "cvm_code": cvm_code, "status": status})
+
+    # Derive fields_mapped/fields_total from fields_detail so card + table are consistent
+    fields_mapped = sum(1 for fd in fields_detail if fd["status"] in ("mapped", "computed"))
+    fields_total  = len(fields_detail)
+
+    bs_stats = {
+        "bpa_records_loaded":  bpa_records_loaded,
+        "bpp_records_loaded":  bpp_records_loaded,
+        "records_after_filter": records_after_filter,
+        "periods_available":   len(balance_sheets),
+        "annual_periods":      annual_periods,
+        "quarterly_periods":   quarterly_periods,
+        "fields_mapped":       fields_mapped,
+        "fields_total":        fields_total,
+        "fields":              fields_detail,
+    }
+    return balance_sheets, bs_stats
+
+
+def _find_cf_descriptions(dfc_df: pd.DataFrame) -> dict[str, str | None]:
+    """Return the first matching DS_CONTA text for each CF sub-account keyword set.
+
+    Scans the full DFC DataFrame (after dedup) once to collect matched descriptions.
+    No logic change — instrumentation only.
+    """
+    result: dict[str, str | None] = {k: None for k in _CF_SUB_ACCOUNTS}
+    if dfc_df.empty or "DS_CONTA" not in dfc_df.columns or "CD_CONTA" not in dfc_df.columns:
+        return result
+
+    kw_configs = {
+        "depreciation_amortization": ("6.01", _DA_KEYWORDS,       []),
+        "capex":                     ("6.02", _CAPEX_KEYWORDS,    _CAPEX_EXCLUDE),
+        "acquisitions":              ("6.02", _ACQUIS_KEYWORDS,   _ACQUIS_EXCLUDE),
+        "debt_issuance":             ("6.03", _DEBT_ISS_KEYWORDS, []),
+        "debt_repayment":            ("6.03", _DEBT_REP_KEYWORDS, _DEBT_REP_EXCLUDE),
+        "dividends_paid":            ("6.03", _DIV_KEYWORDS,      []),
+    }
+
+    for field, (prefix, include_kws, exclude_kws) in kw_configs.items():
+        section = dfc_df[dfc_df["CD_CONTA"].str.startswith(prefix + ".")]
+        for _, row in section.iterrows():
+            desc = str(row.get("DS_CONTA", ""))
+            desc_lower = desc.lower()
+            if any(ek in desc_lower for ek in exclude_kws):
+                continue
+            for kw in include_kws:
+                if kw.lower() in desc_lower:
+                    truncated = desc[:50] + "…" if len(desc) > 50 else desc
+                    result[field] = truncated
+                    break
+            if result[field] is not None:
+                break
+
+    return result
+
+
+def parse_cash_flows(
+    company_name: str,
+    data_dir: Path,
+    years: list,
+) -> tuple:
+    """Parse DFC_MI_con from raw ZIPs into CashFlow objects.
+
+    Applies YTD-to-standalone priority for quarterly data (same logic as
+    income statement deduplication). Uses keyword matching on DS_CONTA for
+    sub-account fields (capex, D&A, debt, dividends).
+    Returns (list[CashFlow], cf_stats) sorted by period date.
+    """
+    dfc_all = _read_statement_from_zips(company_name, data_dir, years, "dfc_mi_con")
+    if dfc_all.empty:
+        return [], {
+            "dfc_records_loaded": 0, "records_after_filter": 0,
+            "periods_available": 0, "annual_periods": 0, "quarterly_periods": 0,
+            "sub_accounts_found": {k: False for k in _CF_SUB_ACCOUNTS},
+        }
+    dfc_records_loaded = len(dfc_all)
+
+    # Monetary scale normalisation
+    dfc_all["VL_CONTA"] = pd.to_numeric(dfc_all["VL_CONTA"], errors="coerce")
+    if "ESCALA_MOEDA" in dfc_all.columns:
+        dfc_all.loc[dfc_all["ESCALA_MOEDA"] == "UNIDADE", "VL_CONTA"] /= 1000
+
+    # DFP/ITR dedup with YTD priority (mirrors income statement logic in build_pivot)
+    if "DT_INI_EXERC" in dfc_all.columns:
+        ini_dt = pd.to_datetime(dfc_all["DT_INI_EXERC"], errors="coerce")
+        ref_dt = pd.to_datetime(dfc_all["DT_REFER"],    errors="coerce")
+        is_ytd_itr = (
+            (dfc_all["_doc_type"] == "ITR") &
+            (ini_dt.dt.month == 1) & (ini_dt.dt.day == 1) &
+            (ini_dt.dt.year == ref_dt.dt.year) &
+            (ref_dt.dt.month != 3)  # Q1 (Mar) is standalone even with Jan-1 start
+        )
+        dfc_all["_row_priority"] = 1   # ITR standalone
+        dfc_all.loc[dfc_all["_doc_type"] == "DFP", "_row_priority"] = 0
+        dfc_all.loc[is_ytd_itr, "_row_priority"] = 2  # ITR YTD (lowest priority)
+    else:
+        dfc_all["_row_priority"] = dfc_all["_doc_type"].map({"DFP": 0, "ITR": 1}).fillna(2)
+
+    dfc_all = (
+        dfc_all.sort_values("_row_priority")
+               .drop_duplicates(subset=["DENOM_CIA", "DT_REFER", "CD_CONTA"], keep="first")
+    )
+    records_after_filter = len(dfc_all)
+
+    def _kw_sum(
+        grp: pd.DataFrame,
+        section_prefix: str,
+        include_kw: list,
+        exclude_kw: list | None = None,
+    ) -> float | None:
+        """Sum sub-account values in *section* matching any include keyword."""
+        exclude_kw = exclude_kw or []
+        section = grp[grp["CD_CONTA"].str.startswith(section_prefix + ".")]
+        total, found = 0.0, False
+        for _, row in section.iterrows():
+            desc = str(row.get("DS_CONTA", "")).lower()
+            if any(ek in desc for ek in exclude_kw):
+                continue
+            for kw in include_kw:
+                if kw.lower() in desc:
+                    val = row.get("VL_CONTA")
+                    if val is not None and pd.notna(val):
+                        total += float(val)
+                        found = True
+                    break
+        return total if found else None
+
+    cash_flows: list = []
+    for (co, period_str), grp in dfc_all.groupby(["DENOM_CIA", "DT_REFER"]):
+        try:
+            period_date = pd.to_datetime(period_str).date()
+        except Exception:
+            continue
+
+        # Determine doc_type and standalone flag from group's priority column
+        max_prio = grp["_row_priority"].max() if "_row_priority" in grp.columns else 1
+        is_standalone = (max_prio < 2)
+        # Most rows in the group should share a single doc_type after dedup
+        if "_doc_type" in grp.columns and not grp["_doc_type"].empty:
+            doc_type = grp["_doc_type"].mode()[0]
+        else:
+            doc_type = "DFP"
+
+        granularity = "annual" if doc_type == "DFP" else "quarterly"
+        month_to_q = {3: 1, 6: 2, 9: 3, 12: 4}
+        fiscal_quarter = month_to_q.get(period_date.month) if granularity == "quarterly" else None
+
+        period = Period(
+            date=period_date,
+            granularity=granularity,
+            fiscal_year=period_date.year,
+            fiscal_quarter=fiscal_quarter,
+            is_standalone=is_standalone,
+            filing_type=doc_type,
+        )
+
+        # Top-level account lookup (reliable across all companies)
+        acct = grp.set_index("CD_CONTA")["VL_CONTA"].to_dict()
+        def _exact(code: str) -> float | None:
+            val = acct.get(code)
+            return float(val) if val is not None and pd.notna(val) else None
+
+        cf = CashFlow(
+            company_id=company_name,
+            period=period,
+            operating_cash_flow=_exact("6.01"),
+            investing_cash_flow=_exact("6.02"),
+            financing_cash_flow=_exact("6.03"),
+            # Sub-accounts: best-effort keyword matching on DS_CONTA
+            depreciation_amortization=_kw_sum(grp, "6.01", _DA_KEYWORDS),
+            capex=_kw_sum(grp, "6.02", _CAPEX_KEYWORDS, _CAPEX_EXCLUDE),
+            acquisitions=_kw_sum(grp, "6.02", _ACQUIS_KEYWORDS, _ACQUIS_EXCLUDE),
+            debt_issuance=_kw_sum(grp, "6.03", _DEBT_ISS_KEYWORDS),
+            debt_repayment=_kw_sum(grp, "6.03", _DEBT_REP_KEYWORDS, _DEBT_REP_EXCLUDE),
+            dividends_paid=_kw_sum(grp, "6.03", _DIV_KEYWORDS),
+        )
+        cash_flows.append(cf)
+
+    cash_flows.sort(key=lambda x: x.period.date)
+
+    # --- Loading stats (instrumentation only, no logic change) ---
+    annual_periods    = sum(1 for cf in cash_flows if cf.period.filing_type == "DFP")
+    quarterly_periods = len(cash_flows) - annual_periods
+
+    sub_accounts_found_map = {
+        k: any(getattr(cf, k, None) is not None for cf in cash_flows)
+        for k in _CF_SUB_ACCOUNTS
+    }
+
+    # Find the first matching DS_CONTA description for each sub-account keyword set
+    matched_descriptions = _find_cf_descriptions(dfc_all)
+
+    sub_accounts_detail = [
+        {
+            "field":               k,
+            "status":              "found" if sub_accounts_found_map[k] else "not_found",
+            "matched_description": matched_descriptions.get(k),
+        }
+        for k in _CF_SUB_ACCOUNTS
+    ]
+
+    # Top-level CF accounts: check if any period has the value mapped
+    top_level_detail = []
+    for code, field_name in _DFC_TOP_CODES.items():
+        found = any(getattr(cf, field_name, None) is not None for cf in cash_flows)
+        top_level_detail.append({
+            "field":    field_name,
+            "cvm_code": code,
+            "status":   "mapped" if found else "not_found",
+        })
+
+    cf_stats = {
+        "dfc_records_loaded":    dfc_records_loaded,
+        "records_after_filter":  records_after_filter,
+        "periods_available":     len(cash_flows),
+        "annual_periods":        annual_periods,
+        "quarterly_periods":     quarterly_periods,
+        "sub_accounts_found":    sub_accounts_found_map,
+        "top_level":             top_level_detail,
+        "sub_accounts":          sub_accounts_detail,
+        "sub_accounts_matched":  sum(1 for k, v in sub_accounts_found_map.items() if v),
+        "sub_accounts_total":    len(_CF_SUB_ACCOUNTS),
+    }
+    return cash_flows, cf_stats

@@ -14,7 +14,7 @@ export default function FindingChart({ finding, timeSeries }) {
   if (!finding) return null
   if (!timeSeries?.length) {
     return (
-      <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '6px', fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>
+      <div style={{ padding: '12px', background: 'var(--offwhite)', borderRadius: '6px', fontSize: '0.8rem', color: 'var(--gray)', textAlign: 'center' }}>
         Run Step 4 to see trend chart
       </div>
     )
@@ -46,41 +46,41 @@ function CostDriftChart({ timeSeries, dp, tc }) {
   return (
     <ResponsiveContainer width="100%" height={210}>
       <LineChart data={timeSeries} margin={{ top: 22, right: 16, bottom: 8, left: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-        <YAxis unit="%" domain={[60, 'auto']} tick={{ fontSize: 10 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,31,58,0.06)" />
+        <XAxis dataKey="period" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }} />
+        <YAxis unit="%" domain={[60, 'auto']} tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }} />
         <Tooltip formatter={(v) => `${v?.toFixed(1)}%`} />
 
         {/* Structural deterioration shading (2022 onward) */}
         {period2022 && lastPeriod && (
           <ReferenceArea
             x1={period2022} x2={lastPeriod}
-            fill="#dc2626" fillOpacity={0.06}
-            label={{ value: tc.structural_deterioration ?? 'Structural deterioration', position: 'insideTopLeft', fontSize: 9, fill: '#dc2626' }}
+            fill="#E24B4A" fillOpacity={0.06}
+            label={{ value: tc.structural_deterioration ?? 'Structural deterioration', position: 'insideTopLeft', fontSize: 9, fill: '#E24B4A' }}
           />
         )}
 
         {/* Revenue = COGS breakeven at 100% */}
         <ReferenceLine
-          y={100} stroke="#dc2626" strokeDasharray="3 2" strokeWidth={1}
-          label={{ value: tc.revenue_equals_cogs ?? 'Revenue = COGS', position: 'insideTopRight', fontSize: 9, fill: '#dc2626' }}
+          y={100} stroke="#E24B4A" strokeDasharray="3 2" strokeWidth={1}
+          label={{ value: tc.revenue_equals_cogs ?? 'Revenue = COGS', position: 'insideTopRight', fontSize: 9, fill: '#E24B4A' }}
         />
 
         {/* First-half and second-half average lines */}
         {hasAvgs && (
           <>
             <ReferenceLine
-              y={dp.first_half_avg} stroke="#3b82f6" strokeDasharray="6 3"
-              label={{ value: `${tc.first_half_avg ?? '1st half avg'}: ${dp.first_half_avg?.toFixed(1)}%`, position: 'insideBottomLeft', fontSize: 10, fill: '#3b82f6' }}
+              y={dp.first_half_avg} stroke="#1e90ff" strokeDasharray="6 3"
+              label={{ value: `${tc.first_half_avg ?? '1st half avg'}: ${dp.first_half_avg?.toFixed(1)}%`, position: 'insideBottomLeft', fontSize: 10, fill: '#1e90ff' }}
             />
             <ReferenceLine
-              y={dp.second_half_avg} stroke="#dc2626" strokeDasharray="6 3"
-              label={{ value: `${tc.second_half_avg ?? '2nd half avg'}: ${dp.second_half_avg?.toFixed(1)}%`, position: 'insideTopRight', fontSize: 10, fill: '#dc2626' }}
+              y={dp.second_half_avg} stroke="#E24B4A" strokeDasharray="6 3"
+              label={{ value: `${tc.second_half_avg ?? '2nd half avg'}: ${dp.second_half_avg?.toFixed(1)}%`, position: 'insideTopRight', fontSize: 10, fill: '#E24B4A' }}
             />
           </>
         )}
 
-        <Line type="monotone" dataKey="COGS_pct_Revenue" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="COGS_pct_Revenue" stroke="#1e90ff" strokeWidth={2} dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   )
@@ -96,26 +96,26 @@ function MarginCompressionChart({ timeSeries, metric, dp, tc }) {
   return (
     <ResponsiveContainer width="100%" height={210}>
       <LineChart data={timeSeries} margin={{ top: 8, right: 60, bottom: 8, left: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-        <YAxis unit="%" tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,31,58,0.06)" />
+        <XAxis dataKey="period" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }} />
+        <YAxis unit="%" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }} domain={['auto', 'auto']} />
         <Tooltip formatter={(v) => `${v?.toFixed(1)}%`} />
 
         {/* Breakeven at 0% */}
         <ReferenceLine
-          y={0} stroke="#475569" strokeDasharray="4 3" strokeWidth={1}
-          label={{ value: tc.breakeven ?? 'Breakeven', position: 'insideBottomRight', fontSize: 10, fill: '#475569' }}
+          y={0} stroke="rgba(11,31,58,0.2)" strokeDasharray="4 3" strokeWidth={1}
+          label={{ value: tc.breakeven ?? 'Breakeven', position: 'insideBottomRight', fontSize: 10, fill: 'rgba(11,31,58,0.3)' }}
         />
 
         {/* Compression rate label near last period */}
         {annualChange != null && lastPeriod && (
           <ReferenceLine
             x={lastPeriod} stroke="transparent"
-            label={{ value: `${annualChange.toFixed(1)}pp${tc.per_year ?? '/year'}`, position: 'insideTopRight', fontSize: 10, fill: '#dc2626', fontWeight: 'bold' }}
+            label={{ value: `${annualChange.toFixed(1)}pp${tc.per_year ?? '/year'}`, position: 'insideTopRight', fontSize: 10, fill: '#E24B4A', fontWeight: 'bold' }}
           />
         )}
 
-        <Line type="monotone" dataKey={metric} stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey={metric} stroke="#1e90ff" strokeWidth={2} dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   )
@@ -130,29 +130,29 @@ function RevenueCostDecouplingChart({ timeSeries, dp, period, tc }) {
   return (
     <ResponsiveContainer width="100%" height={210}>
       <LineChart data={timeSeries} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-        <YAxis unit="%" tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,31,58,0.06)" />
+        <XAxis dataKey="period" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }} />
+        <YAxis unit="%" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }} domain={['auto', 'auto']} />
         <Tooltip formatter={(v) => `${v?.toFixed(1)}%`} />
 
         {/* Zero reference */}
-        <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" strokeWidth={1} />
+        <ReferenceLine y={0} stroke="rgba(11,31,58,0.2)" strokeDasharray="3 3" strokeWidth={1} />
 
         {/* Highlight the period with worst decoupling */}
         {period && (
           <ReferenceLine
-            x={period} stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 2"
+            x={period} stroke="#EF9F27" strokeWidth={2} strokeDasharray="4 2"
             label={divergence != null ? {
               value: `${Math.abs(divergence).toFixed(1)}pp ${tc.divergence ?? 'divergence'}`,
               position: 'insideTopRight',
               fontSize: 10,
-              fill: '#dc2626',
+              fill: '#E24B4A',
             } : undefined}
           />
         )}
 
-        <Line type="monotone" dataKey="Revenue_YoY_pct" name="Revenue YoY%" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
-        <Line type="monotone" dataKey="COGS_YoY_pct" name="COGS YoY%" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="Revenue_YoY_pct" name="Revenue YoY%" stroke="#1e90ff" strokeWidth={2} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="COGS_YoY_pct" name="COGS YoY%" stroke="#E24B4A" strokeWidth={2} dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   )
@@ -165,11 +165,11 @@ function DefaultChart({ timeSeries, metric }) {
   return (
     <ResponsiveContainer width="100%" height={180}>
       <LineChart data={timeSeries} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-        <YAxis unit="%" tick={{ fontSize: 10 }} domain={['auto', 'auto']} />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,31,58,0.06)" />
+        <XAxis dataKey="period" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }} />
+        <YAxis unit="%" tick={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }} domain={['auto', 'auto']} />
         <Tooltip formatter={(v) => `${v?.toFixed(1)}%`} />
-        <Line type="monotone" dataKey={metric} stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey={metric} stroke="#1e90ff" strokeWidth={2} dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   )

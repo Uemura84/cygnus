@@ -1,12 +1,12 @@
 /**
  * Step 4 — Revenue vs. COGS YoY growth bar chart with divergence indicator.
  * A thin third bar shows the gap (Revenue YoY − COGS YoY):
- *   green = revenue outpaced COGS (good)
- *   red   = COGS grew faster than revenue (bad)
+ *   blue = revenue outpaced COGS (good)
+ *   red  = COGS grew faster than revenue (bad)
  *
  * COGS sign convention: positive = costs increased (backend uses abs()).
  * So gap = Revenue_YoY_pct − COGS_YoY_pct:
- *   positive → revenue grew faster (green)
+ *   positive → revenue grew faster (blue)
  *   negative → COGS grew faster   (red)
  *
  * Props: data — array of { period, Revenue_YoY_pct, COGS_YoY_pct }
@@ -40,25 +40,25 @@ export default function RevenueCOGSGrowth({ data, labels = {} }) {
   return (
     <ResponsiveContainer width="100%" height={290}>
       <BarChart data={chartData} margin={{ top: 36, right: 24, bottom: 8, left: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-        <YAxis unit="%" tick={{ fontSize: 11 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,31,58,0.06)" />
+        <XAxis dataKey="period" tick={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }} />
+        <YAxis unit="%" tick={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }} />
         <Tooltip formatter={(v) => `${v?.toFixed(1)}%`} />
         <Legend />
-        <ReferenceLine y={0} stroke="#94a3b8" />
+        <ReferenceLine y={0} stroke="rgba(11,31,58,0.2)" />
 
         {/* Cost stickiness annotation on the 2022 bars */}
         {stickLabel && row2022?.period && (
           <ReferenceLine
             x={row2022.period}
-            stroke="#f59e0b"
+            stroke="#EF9F27"
             strokeDasharray="3 2"
             strokeWidth={1.5}
             label={{
               value: stickLabel,
               position: 'top',
               fontSize: 8.5,
-              fill: '#b45309',
+              fill: '#EF9F27',
               offset: 8,
             }}
           />
@@ -67,13 +67,13 @@ export default function RevenueCOGSGrowth({ data, labels = {} }) {
         <Bar
           dataKey="Revenue_YoY_pct"
           name={labels.revenue ?? 'Revenue YoY %'}
-          fill="#3b82f6"
+          fill="#1e90ff"
           radius={[3, 3, 0, 0]}
         />
         <Bar
           dataKey="COGS_YoY_pct"
           name={labels.cogs ?? 'COGS YoY %'}
-          fill="#ef4444"
+          fill="#E24B4A"
           radius={[3, 3, 0, 0]}
         />
 
@@ -91,8 +91,8 @@ export default function RevenueCOGSGrowth({ data, labels = {} }) {
                 entry.Gap_pct == null
                   ? 'transparent'
                   : entry.Gap_pct >= 0
-                  ? '#16a34a'
-                  : '#dc2626'
+                  ? '#1e90ff'
+                  : '#E24B4A'
               }
               fillOpacity={0.75}
             />

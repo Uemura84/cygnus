@@ -38,21 +38,21 @@ const EVENT_CATEGORIES = {
 }
 
 const CATEGORY_COLORS = {
-  crisis:     '#dc3545',
-  recovery:   '#28a745',
-  peak:       '#1a7a34',
-  tightening: '#007bff',
-  pressure:   '#6c8ebf',
-  trough:     '#6c757d',
-  neutral:    '#adb5bd',
+  crisis:     '#E24B4A',
+  recovery:   '#1e90ff',
+  peak:       '#1e90ff',
+  tightening: '#1e90ff',
+  pressure:   'rgba(30,144,255,0.55)',
+  trough:     'rgba(11,31,58,0.4)',
+  neutral:    'rgba(11,31,58,0.2)',
 }
 
 // --- Finding styling by category ---
 const FINDING_COLORS = {
-  core:       { stroke: '#2563eb', fill: '#eff6ff' },
-  supporting: { stroke: '#16a34a', fill: '#f0fdf4' },
-  contextual: { stroke: '#6b7280', fill: '#f9fafb' },
-  anomalies:  { stroke: '#d97706', fill: '#fffbeb' },
+  core:       { stroke: '#1e90ff', fill: 'rgba(30,144,255,0.08)' },
+  supporting: { stroke: 'rgba(30,144,255,0.55)', fill: 'rgba(30,144,255,0.05)' },
+  contextual: { stroke: 'rgba(11,31,58,0.3)', fill: 'rgba(11,31,58,0.03)' },
+  anomalies:  { stroke: '#EF9F27', fill: 'rgba(239,159,39,0.07)' },
 }
 
 // --- Helpers ---
@@ -134,10 +134,10 @@ export default function MacroTimeline({ macroTimeline, findings, findingCategori
         aria-label={tc.macro_timeline_title ?? 'Findings vs. Macro Context'}
       >
         {/* Lane labels */}
-        <text x={LEFT - 8} y={MACRO_Y + 4} textAnchor="end" fontSize={9} fill="#94a3b8" fontWeight="600" letterSpacing="0.5">
+        <text x={LEFT - 8} y={MACRO_Y + 4} textAnchor="end" fontSize={9} fill="rgba(11,31,58,0.3)" fontWeight="600" letterSpacing="0.5">
           {tc.macro_events_lane ?? 'MACRO EVENTS'}
         </text>
-        <text x={LEFT - 8} y={FIND_Y + 4} textAnchor="end" fontSize={9} fill="#94a3b8" fontWeight="600" letterSpacing="0.5">
+        <text x={LEFT - 8} y={FIND_Y + 4} textAnchor="end" fontSize={9} fill="rgba(11,31,58,0.3)" fontWeight="600" letterSpacing="0.5">
           {tc.findings_lane ?? 'FINDINGS'}
         </text>
 
@@ -145,7 +145,7 @@ export default function MacroTimeline({ macroTimeline, findings, findingCategori
         <line
           x1={LEFT - 4} y1={AXIS_Y}
           x2={xEnd + 4} y2={AXIS_Y}
-          stroke="#cbd5e1" strokeWidth={1.5}
+          stroke="rgba(11,31,58,0.1)" strokeWidth={1.5}
         />
 
         {/* Year ticks + labels + half-year ticks */}
@@ -154,12 +154,12 @@ export default function MacroTimeline({ macroTimeline, findings, findingCategori
           const xHalf = year < 2025 ? periodToX(`${year}-H2`) : null
           return (
             <g key={year}>
-              <line x1={xYear} y1={AXIS_Y - 6} x2={xYear} y2={AXIS_Y + 6} stroke="#94a3b8" strokeWidth={1.5} />
-              <text x={xYear} y={AXIS_Y + 20} textAnchor="middle" fontSize={11} fill="#475569" fontWeight="700">
+              <line x1={xYear} y1={AXIS_Y - 6} x2={xYear} y2={AXIS_Y + 6} stroke="rgba(11,31,58,0.2)" strokeWidth={1.5} />
+              <text x={xYear} y={AXIS_Y + 20} textAnchor="middle" fontSize={11} fill="var(--charcoal, #2b2b2b)" fontWeight="700">
                 {year}
               </text>
               {xHalf && (
-                <line x1={xHalf} y1={AXIS_Y - 3} x2={xHalf} y2={AXIS_Y + 3} stroke="#cbd5e1" strokeWidth={1} />
+                <line x1={xHalf} y1={AXIS_Y - 3} x2={xHalf} y2={AXIS_Y + 3} stroke="rgba(11,31,58,0.1)" strokeWidth={1} />
               )}
             </g>
           )
@@ -261,7 +261,7 @@ export default function MacroTimeline({ macroTimeline, findings, findingCategori
                 {f.id}
               </text>
               {/* Short pattern label below dot */}
-              <text x={x} y={FIND_Y + 21} textAnchor="middle" fontSize={8} fill="#64748b">
+              <text x={x} y={FIND_Y + 21} textAnchor="middle" fontSize={8} fill="rgba(11,31,58,0.4)">
                 {patternShort}
               </text>
             </g>
@@ -270,7 +270,7 @@ export default function MacroTimeline({ macroTimeline, findings, findingCategori
 
         {/* Trend-finding legend note (bottom-left) */}
         {trendFindings.length > 0 && (
-          <text x={xStart} y={SVG_H - 6} fontSize={8} fill="#94a3b8" fontStyle="italic">
+          <text x={xStart} y={SVG_H - 6} fontSize={8} fill="rgba(11,31,58,0.25)" fontStyle="italic">
             {tc.trend_finding ?? 'Trend (full period)'}
           </text>
         )}

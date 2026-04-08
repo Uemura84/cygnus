@@ -26,6 +26,9 @@ EXCLUDE_MAP: dict[str, list[str]] = {
     "GERDAU":  ["METALURGICA GERDAU"],
 }
 
+# Statement file types inside each ZIP (used for statements_found counting)
+_STATEMENT_TYPES = ["dre_con", "bpa_con", "bpp_con", "dfc_mi_con"]
+
 
 def _company_search_key(company_name: str) -> str:
     """Extract uppercase search key from full company name.
@@ -47,6 +50,50 @@ def _download_file(url: str, dest: Path, timeout: int = 60) -> bool:
         return True
     except requests.RequestException:
         return False
+
+
+def _count_statement_rows_in_zip(
+    zip_path: Path,
+    company_key: str,
+    exclude: list[str],
+    file_types: list[str],
+) -> dict[str, dict]:
+    """Count company rows per statement file type inside *zip_path*.
+
+    Returns a dict keyed by file_type with {"found": bool, "rows": int}.
+    Only reads DENOM_CIA column to keep this fast.
+    """
+    result = {ft: {"found": False, "rows": 0} for ft in file_types}
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            for csv_name in zf.namelist():
+                if not csv_name.endswith(".csv"):
+                    continue
+                matched_ft = next(
+                    (ft for ft in file_types if ft in csv_name.lower()), None
+                )
+                if matched_ft is None:
+                    continue
+                result[matched_ft]["found"] = True
+                try:
+                    with zf.open(csv_name) as f:
+                        df = pd.read_csv(
+                            f, sep=";", encoding="latin-1",
+                            low_memory=False, usecols=["DENOM_CIA"],
+                        )
+                    mask = df["DENOM_CIA"].str.upper().str.contains(
+                        company_key, na=False
+                    )
+                    for excl in exclude:
+                        mask &= ~df["DENOM_CIA"].str.upper().str.contains(
+                            excl, na=False
+                        )
+                    result[matched_ft]["rows"] += int(mask.sum())
+                except Exception:
+                    pass
+    except (zipfile.BadZipFile, FileNotFoundError):
+        pass
+    return result
 
 
 def _count_dre_rows_in_zip(
@@ -158,6 +205,11 @@ def download(company_name: str, years: list[int], data_dir: Path) -> dict:
     itr_rows = 0
     all_dates: list[str] = []
 
+    # Per-statement-type file counts and row totals (for "Statements Found" table)
+    dfp_file_counts  = {ft: 0 for ft in _STATEMENT_TYPES}
+    itr_file_counts  = {ft: 0 for ft in _STATEMENT_TYPES}
+    total_rows_by_ft = {ft: 0 for ft in _STATEMENT_TYPES}
+
     for year in years:
         # DFP (annual)
         dfp_path = raw_dir / f"dfp_cia_aberta_{year}.zip"
@@ -166,6 +218,13 @@ def download(company_name: str, years: list[int], data_dir: Path) -> dict:
             rows, dates = _count_dre_rows_in_zip(dfp_path, company_key, exclude)
             dfp_rows += rows
             all_dates.extend(dates)
+            stmt_info = _count_statement_rows_in_zip(
+                dfp_path, company_key, exclude, _STATEMENT_TYPES
+            )
+            for ft, info in stmt_info.items():
+                if info["found"]:
+                    dfp_file_counts[ft] += 1
+                total_rows_by_ft[ft] += info["rows"]
 
         # ITR (quarterly)
         itr_path = raw_dir / f"itr_cia_aberta_{year}.zip"
@@ -174,11 +233,45 @@ def download(company_name: str, years: list[int], data_dir: Path) -> dict:
             rows, dates = _count_dre_rows_in_zip(itr_path, company_key, exclude)
             itr_rows += rows
             all_dates.extend(dates)
+            stmt_info = _count_statement_rows_in_zip(
+                itr_path, company_key, exclude, _STATEMENT_TYPES
+            )
+            for ft, info in stmt_info.items():
+                if info["found"]:
+                    itr_file_counts[ft] += 1
+                total_rows_by_ft[ft] += info["rows"]
 
     date_range: dict[str, object] = {"start": None, "end": None}
     if all_dates:
         sorted_dates = sorted(set(all_dates))
         date_range = {"start": sorted_dates[0], "end": sorted_dates[-1]}
+
+    statements_found = [
+        {
+            "type": "dre",
+            "dfp_files": dfp_file_counts["dre_con"],
+            "itr_files": itr_file_counts["dre_con"],
+            "total_rows": total_rows_by_ft["dre_con"],
+        },
+        {
+            "type": "bpa",
+            "dfp_files": dfp_file_counts["bpa_con"],
+            "itr_files": itr_file_counts["bpa_con"],
+            "total_rows": total_rows_by_ft["bpa_con"],
+        },
+        {
+            "type": "bpp",
+            "dfp_files": dfp_file_counts["bpp_con"],
+            "itr_files": itr_file_counts["bpp_con"],
+            "total_rows": total_rows_by_ft["bpp_con"],
+        },
+        {
+            "type": "dfc",
+            "dfp_files": dfp_file_counts["dfc_mi_con"],
+            "itr_files": itr_file_counts["dfc_mi_con"],
+            "total_rows": total_rows_by_ft["dfc_mi_con"],
+        },
+    ]
 
     return {
         "dfp_rows": dfp_rows,
@@ -187,5 +280,6 @@ def download(company_name: str, years: list[int], data_dir: Path) -> dict:
         "company": company_name,
         "date_range": date_range,
         "files_downloaded": files_downloaded,
+        "statements_found": statements_found,
         "source": "live",
     }

@@ -6,7 +6,7 @@ import Step4EBITDADrivers from '../steps/Step4EBITDADrivers'
 import Step5QualityScan from '../steps/Step5QualityScan'
 import Step6CoreAnalysis from '../steps/Step6CoreAnalysis'
 import Step7AIAgent from '../steps/Step7AIAgent'
-import Step8Summary from '../steps/Step8Summary'
+import Step8Reporting from '../steps/Step8Reporting'
 import Step9QA from '../steps/Step9QA'
 
 const STEP_COMPONENTS = {
@@ -17,7 +17,7 @@ const STEP_COMPONENTS = {
   5: Step5QualityScan,
   6: Step6CoreAnalysis,
   7: Step7AIAgent,
-  8: Step8Summary,
+  8: Step8Reporting,
   9: Step9QA,
 }
 
