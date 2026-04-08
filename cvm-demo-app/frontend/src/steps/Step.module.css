@@ -1,7 +1,7 @@
 /* Shared styles for all step content panels */
 
 .wrapper {
-  max-width: 900px;
+  width: 100%;
 }
 
 .title {
