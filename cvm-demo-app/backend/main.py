@@ -278,10 +278,11 @@ async def llm_stream(websocket: WebSocket):
                         await websocket.send_text("[DONE]")
                         return
 
-            # Live LLM call — collect full response, clean JSON, send once
+            # Live LLM call — stream tokens to frontend, accumulate for cache
             full_text = ""
             async for token in step7_ai_agent.stream(payload, config=app_config):
                 full_text += token
+                await websocket.send_text(token)
             cleaned_json = _clean_step7_json(full_text)
             pipeline_state["step7"] = {"response_text": cleaned_json}
             save_cache(7, {
@@ -289,7 +290,6 @@ async def llm_stream(websocket: WebSocket):
                 "data": {"response_text": cleaned_json, "status": "complete"},
                 "metadata": {"source": "websocket"},
             }, CACHE_DIR, company_name=app_config.company_name)
-            await websocket.send_text(cleaned_json)
         elif step == 8:
             # Serve from cache when cache_mode is on
             if app_config.cache_mode:
@@ -302,10 +302,11 @@ async def llm_stream(websocket: WebSocket):
                         await websocket.send_text("[DONE]")
                         return
 
-            # Live LLM call — collect full JSON, clean, send once
+            # Live LLM call — stream tokens to frontend, accumulate for cache
             full_text = ""
             async for token in step8_reporting.stream(payload, config=app_config):
                 full_text += token
+                await websocket.send_text(token)
             cleaned_json = _clean_step7_json(full_text)
             pipeline_state["step8"] = {"response_text": cleaned_json}
             save_cache(8, {
@@ -313,7 +314,6 @@ async def llm_stream(websocket: WebSocket):
                 "data": {"response_text": cleaned_json, "status": "complete"},
                 "metadata": {"source": "websocket"},
             }, CACHE_DIR, company_name=app_config.company_name)
-            await websocket.send_text(cleaned_json)
         else:
             # Step 9 Q&A — conversational streaming with pipeline context
             async for token in step9_llm_analysis.stream(
