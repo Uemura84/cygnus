@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useI18n, useAppState } from '../App'
+import RunStepButton from '../components/RunStepButton'
 import styles from './Step.module.css'
 
 const FLAG_BADGE = {
@@ -64,6 +65,8 @@ export default function Step5QualityScan({ stepState, data }) {
     <div className={styles.wrapper}>
       <h2 className={styles.title}>{t.step5.title}</h2>
       <p className={styles.description}>{t.step5.description}</p>
+
+      <RunStepButton step={5} />
 
       {stepState === 'running' && (
         <div className={styles.running}>{t.step5.running_message}</div>

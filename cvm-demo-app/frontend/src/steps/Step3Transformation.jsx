@@ -1,4 +1,5 @@
 import { useI18n } from '../App'
+import RunStepButton from '../components/RunStepButton'
 import styles from './Step.module.css'
 
 const CF_SUB_ACCOUNT_KEYS = [
@@ -33,6 +34,8 @@ export default function Step3Transformation({ stepState, data }) {
     <div className={styles.wrapper}>
       <h2 className={styles.title}>{t.step3.title}</h2>
       <p className={styles.description}>{t.step3.description}</p>
+
+      <RunStepButton step={3} />
 
       {stepState === 'running' && (
         <div className={styles.running}>{t.step3.running_message}</div>

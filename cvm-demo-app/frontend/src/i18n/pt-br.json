@@ -13,6 +13,14 @@
     "run_step": "Executar Etapa",
     "running": "Executando..."
   },
+  "run_actions": {
+    "1": "Baixar Dados",
+    "2": "Aplicar Filtros",
+    "3": "Mapear DRE",
+    "4": "Calcular Métricas",
+    "5": "Validar Métricas",
+    "6": "Executar Detecção"
+  },
   "step_states": {
     "pending": "Pendente",
     "running": "Executando",

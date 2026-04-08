@@ -1,5 +1,6 @@
 import { useI18n } from '../App'
 import DataFunnel from '../components/charts/DataFunnel'
+import RunStepButton from '../components/RunStepButton'
 import styles from './Step.module.css'
 
 const STMT_LABELS = ['DRE', 'BPA', 'BPP', 'DFC']
@@ -36,6 +37,8 @@ export default function Step2Preparation({ stepState, data }) {
     <div className={styles.wrapper}>
       <h2 className={styles.title}>{t.step2.title}</h2>
       <p className={styles.description}>{t.step2.description}</p>
+
+      <RunStepButton step={2} />
 
       {stepState === 'running' && (
         <div className={styles.running}>{t.step2.running_message}</div>

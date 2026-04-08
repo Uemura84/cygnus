@@ -1,4 +1,5 @@
 import { useI18n } from '../App'
+import RunStepButton from '../components/RunStepButton'
 import styles from './Step.module.css'
 
 const STMT_LABEL_KEYS = {
@@ -16,6 +17,8 @@ export default function Step1Download({ stepState, data }) {
     <div className={styles.wrapper}>
       <h2 className={styles.title}>{t.step1.title}</h2>
       <p className={styles.description}>{t.step1.description}</p>
+
+      <RunStepButton step={1} />
 
       {stepState === 'running' && (
         <div className={styles.running}>{t.step1.running_message}</div>

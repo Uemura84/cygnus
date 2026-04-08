@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useI18n, useAppState } from '../App'
 import FindingChart from '../components/charts/FindingChart'
 import RiskGauge from '../components/charts/RiskGauge'
+import RunStepButton from '../components/RunStepButton'
 import styles from './Step.module.css'
 
 const SEVERITY_BADGE = { HIGH: styles.badgeHigh, MEDIUM: styles.badgeMedium, LOW: styles.badgeLow, CRITICAL: styles.badgeHigh }
@@ -136,6 +137,8 @@ export default function Step6CoreAnalysis({ stepState, data }) {
     <div className={styles.wrapper}>
       <h2 className={styles.title}>{t.step6.title}</h2>
       <p className={styles.description}>{t.step6.description}</p>
+
+      <RunStepButton step={6} />
 
       {stepState === 'running' && (
         <div className={styles.running}>{t.step6.running_message}</div>

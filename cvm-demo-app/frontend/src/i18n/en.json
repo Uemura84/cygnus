@@ -13,6 +13,14 @@
     "run_step": "Run Step",
     "running": "Running..."
   },
+  "run_actions": {
+    "1": "Download Data",
+    "2": "Apply Filters",
+    "3": "Map Statements",
+    "4": "Compute Metrics",
+    "5": "Validate Metrics",
+    "6": "Run Detection"
+  },
   "step_states": {
     "pending": "Pending",
     "running": "Running",

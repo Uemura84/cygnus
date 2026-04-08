@@ -8,6 +8,7 @@ import {
 import { useI18n } from '../App'
 import MarginTrajectory from '../components/charts/MarginTrajectory'
 import RevenueCOGSGrowth from '../components/charts/RevenueCOGSGrowth'
+import RunStepButton from '../components/RunStepButton'
 import styles from './Step.module.css'
 
 const ROWS = [
@@ -121,6 +122,8 @@ export default function Step4EBITDADrivers({ stepState, data }) {
     <div className={styles.wrapper}>
       <h2 className={styles.title}>{t.step4.title}</h2>
       <p className={styles.description}>{t.step4.description}</p>
+
+      <RunStepButton step={4} />
 
       {stepState === 'running' && (
         <div className={styles.running}>{t.step4.running_message}</div>

@@ -52,7 +52,7 @@ export default function StepWizard() {
         </main>
       </div>
 
-      {/* Footer */}
+      {/* Footer — Previous / Next only */}
       <footer className={styles.footer}>
         <button
           className={styles.navBtn}
@@ -61,50 +61,14 @@ export default function StepWizard() {
         >
           ← {t.nav.previous}
         </button>
-        <div className={styles.footerRight}>
-          {state.currentStep !== 7 && state.currentStep !== 8 && state.currentStep !== 9 && <RunStepButton />}
-          <button
-            className={styles.navBtn}
-            disabled={state.currentStep >= 9}
-            onClick={() => dispatch({ type: 'NAVIGATE_TO_STEP', step: state.currentStep + 1 })}
-          >
-            {t.nav.next} →
-          </button>
-        </div>
+        <button
+          className={styles.navBtn}
+          disabled={state.currentStep >= 9}
+          onClick={() => dispatch({ type: 'NAVIGATE_TO_STEP', step: state.currentStep + 1 })}
+        >
+          {t.nav.next} →
+        </button>
       </footer>
     </div>
-  )
-}
-
-function RunStepButton() {
-  const t = useI18n()
-  const state = useAppState()
-  const dispatch = useAppDispatch()
-
-  const step = state.currentStep
-  const stepState = state.stepStates[step]
-  const isRunning = stepState === 'running'
-
-  async function handleRun() {
-    dispatch({ type: 'SET_STEP_RUNNING', step })
-    try {
-      const res = await fetch(`/api/step/${step}`, { method: 'POST' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      dispatch({ type: 'SET_STEP_COMPLETE', step, data: json })
-    } catch (err) {
-      console.error('Step failed:', err)
-      dispatch({ type: 'SET_STEP_ERROR', step })
-    }
-  }
-
-  return (
-    <button
-      className={`${styles.navBtn} ${styles.runBtn}`}
-      onClick={handleRun}
-      disabled={isRunning}
-    >
-      {isRunning ? t.nav.running : `${t.nav.run_step} →`}
-    </button>
   )
 }
