@@ -150,7 +150,7 @@ export default function StepSidebar() {
       {/* Logo */}
       <div className={styles.logoArea}>
         {collapsed
-          ? <img src="/cygnus-mark.svg"      alt="Cygnus" className={styles.logoMark} />
+          ? <img src="/cygnus-mark-dark.svg"  alt="Cygnus" className={styles.logoMark} />
           : <img src="/cygnus-logo-dark.svg" alt="Cygnus" className={styles.logoFull} />
         }
       </div>
@@ -166,7 +166,7 @@ export default function StepSidebar() {
 
           // Icon color: Signal Blue for completed/active, Slate 40% for pending
           const iconColor = (stepState === 'complete' || isCurrent)
-            ? '#1e90ff'
+            ? '#0e8f9a'
             : 'rgba(74,85,104,0.4)'
 
           // Flow line below this step: solid if complete, dashed if current/pending

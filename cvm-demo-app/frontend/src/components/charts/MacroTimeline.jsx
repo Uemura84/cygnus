@@ -39,18 +39,18 @@ const EVENT_CATEGORIES = {
 
 const CATEGORY_COLORS = {
   crisis:     '#E24B4A',
-  recovery:   '#1e90ff',
-  peak:       '#1e90ff',
-  tightening: '#1e90ff',
-  pressure:   'rgba(30,144,255,0.55)',
+  recovery:   '#0e8f9a',
+  peak:       '#0e8f9a',
+  tightening: '#0e8f9a',
+  pressure:   'rgba(14,143,154,0.55)',
   trough:     'rgba(11,31,58,0.4)',
   neutral:    'rgba(11,31,58,0.2)',
 }
 
 // --- Finding styling by category ---
 const FINDING_COLORS = {
-  core:       { stroke: '#1e90ff', fill: 'rgba(30,144,255,0.08)' },
-  supporting: { stroke: 'rgba(30,144,255,0.55)', fill: 'rgba(30,144,255,0.05)' },
+  core:       { stroke: '#0e8f9a', fill: 'rgba(14,143,154,0.08)' },
+  supporting: { stroke: 'rgba(14,143,154,0.55)', fill: 'rgba(14,143,154,0.05)' },
   contextual: { stroke: 'rgba(11,31,58,0.3)', fill: 'rgba(11,31,58,0.03)' },
   anomalies:  { stroke: '#EF9F27', fill: 'rgba(239,159,39,0.07)' },
 }

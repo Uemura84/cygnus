@@ -5,6 +5,7 @@ The frontend renders bilingual section headers and embeds visual elements from
 Step 4/6 data already in memory — the LLM only generates narrative text.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -14,6 +15,7 @@ from typing import AsyncIterator
 from config import DATA_DIR, CACHE_DIR
 from cache_utils import load_cache, save_cache
 from pipeline.enrichment import SECTOR_MAP
+from steps.step7_ai_agent import build_base_system
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +102,12 @@ _MOCK_DATA = {
         "(81% → 95% of revenue), negative equity of −R$16.5B, Debt/EBITDA of 14.4×, and six "
         "consecutive periods of negative free cash flow."
     ),
+    "featured_chart": {
+        "primary_metric": "revenue_abs",
+        "secondary_metric": "cogs_abs",
+        "chart_title": "Revenue vs COGS Trajectory",
+        "reason": "Shows cost absorption eroding revenue as spreads collapsed",
+    },
     "what_happened": (
         "Gross margin collapsed from 30.4% in 2021 to 2.2% by 2024 — a 4.6pp/year compression "
         "driven by COGS rising 11pp as a share of revenue. "
@@ -159,21 +167,17 @@ _MOCK_DATA = {
 MOCK_RESPONSE = json.dumps(_MOCK_DATA, ensure_ascii=False)
 
 
-# ── JSON schema shown to the LLM ─────────────────────────────────────────────
+# ── Section schemas ───────────────────────────────────────────────────────────
 
-_JSON_SCHEMA = """\
+_DIAGNOSIS_SCHEMA = """\
 {
   "executive_summary": "<MAX 50 WORDS: one tight sentence with specific numbers — risk score, key metric, the central finding>",
-  "what_happened": "<MAX 80 WORDS: 2-3 sentences, data-driven, specific % and periods. What changed, when, how much>",
-  "how_serious": "<MAX 80 WORDS: 2-3 sentences on magnitude and trajectory. Reference the cross-module convergence>",
-  "when_things_turned": "<MAX 80 WORDS: the critical inflection — exact period, mechanism, why it is structural not cyclical>",
-  "what_comes_next": "<MAX 80 WORDS: forward implications integrating specialist hypotheses and data trajectory>",
-  "what_we_cant_answer": "<MAX 60 WORDS: 2-3 sentences framing the data gap — what question remains and why it matters>",
-  "data_gaps": [
-    "<specific internal data source 1 — one sentence each, name the data and why it matters>",
-    "<source 2>",
-    "<source 3>"
-  ],
+  "featured_chart": {
+    "primary_metric": "<exactly one of: revenue_abs | cogs_abs | gross_profit_abs | ebit_abs | ebitda_abs>",
+    "secondary_metric": "<one of the same options, or null if a single line is cleaner>",
+    "chart_title": "<4-6 word label for the chart>",
+    "reason": "<MAX 15 WORDS: why this metric best illustrates the central finding>"
+  },
   "key_findings": [
     {
       "module": "<Profitability | Balance Sheet | Cash Flow | Diagnosis>",
@@ -182,9 +186,31 @@ _JSON_SCHEMA = """\
       "evidence": "<key number(s) in 10 words max>"
     }
   ],
-  "next_step": "<MAX 30 WORDS: one sentence framing the value of internal data access>",
+  "next_step": "<MAX 30 WORDS: one sentence framing the value of internal data access>"
+}"""
+
+_TIMELINE_SCHEMA = """\
+{
+  "what_happened": "<MAX 80 WORDS: 2-3 sentences, data-driven, specific % and periods. What changed, when, how much>",
+  "when_things_turned": "<MAX 80 WORDS: the critical inflection — exact period, mechanism, why it is structural not cyclical>"
+}"""
+
+_SEVERITY_SCHEMA = """\
+{
+  "how_serious": "<MAX 80 WORDS: 2-3 sentences on magnitude and trajectory. Reference the cross-module convergence>",
+  "what_comes_next": "<MAX 80 WORDS: forward implications integrating specialist hypotheses and data trajectory>"
+}"""
+
+_GAPS_SCHEMA = """\
+{
+  "what_we_cant_answer": "<MAX 60 WORDS: 2-3 sentences framing the data gap — what question remains and why it matters>",
+  "data_gaps": [
+    "<specific internal data source 1 — one sentence each, name the data and why it matters>",
+    "<source 2>",
+    "<source 3>"
+  ],
   "suggested_questions": [
-    "<company-specific follow-up question a CFO would ask — reference a specific finding, number, or data gap from the analysis>",
+    "<company-specific follow-up question a CFO would ask — reference a specific finding, number, or data gap>",
     "<question 2>",
     "<question 3>",
     "<question 4>",
@@ -192,30 +218,58 @@ _JSON_SCHEMA = """\
   ]
 }"""
 
+_SEVERITY_VOCAB_GATE = (
+    "SEVERITY VOCABULARY GATE: If the cross-module summary above does not use the word "
+    "\"distress\", this section must not use \"distress\", \"crisis\", \"collapse\", "
+    "\"insolvency\", \"critical condition\", \"financial distress\", \"distress risk\", "
+    "\"no financial cushion\", or equivalent distress-implying phrases. Use approved "
+    "vocabulary (pressure / compression / deterioration / erosion / multi-signal "
+    "deterioration / elevated risk signals / material pressure signals) only."
+)
+
+
+_SECTION_DEFAULTS: dict[str, dict] = {
+    "diagnosis": {"executive_summary": "", "featured_chart": None, "key_findings": [], "next_step": ""},
+    "timeline":  {"what_happened": "", "when_things_turned": ""},
+    "severity":  {"how_serious": "", "what_comes_next": ""},
+    "gaps":      {"what_we_cant_answer": "", "data_gaps": [], "suggested_questions": []},
+}
+
 
 # ── Stream function ───────────────────────────────────────────────────────────
 
 async def stream(payload: dict, config) -> AsyncIterator[str]:
-    """Yield a single valid JSON string. Uses one batch API call."""
+    """Yield one section message per completed parallel call. Uses 4 focused API calls."""
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
 
     if not api_key:
-        yield MOCK_RESPONSE
+        # Emit mock data as section messages
+        mock = json.loads(MOCK_RESPONSE)
+        for section_key, fields in [
+            ("diagnosis", ["executive_summary", "featured_chart", "key_findings", "next_step"]),
+            ("timeline",  ["what_happened", "when_things_turned"]),
+            ("severity",  ["how_serious", "what_comes_next"]),
+            ("gaps",      ["what_we_cant_answer", "data_gaps", "suggested_questions"]),
+        ]:
+            yield json.dumps({"__section": section_key, "data": {k: mock.get(k) for k in fields}})
         return
 
     import anthropic
     client = anthropic.AsyncAnthropic(api_key=api_key)
 
-    step6_data     = payload.get("step6_data", {})
-    step7_response = payload.get("step7_response", "")
-    company_name   = payload.get("company_name", "the company")
-    language       = payload.get("language", "en")
+    step6_data        = payload.get("step6_data", {})
+    step7_response    = payload.get("step7_response", "")
+    company_name      = payload.get("company_name", "the company")
+    language          = payload.get("language", "en")
+    fre_available     = payload.get("fre_available", False)
+    fre_debt_maturity = payload.get("fre_debt_maturity") or {}
+    fre_debt_currency = payload.get("fre_debt_currency") or {}
     lang_str       = "Portuguese (Brazilian)" if language == "pt-br" else "English"
 
     company_key = company_name.split()[0].upper()
     sector      = SECTOR_MAP.get(company_key, "Unknown")
 
-    # ── Build Step 6 context block ────────────────────────────────────────────
+    # ── Build shared context blocks ───────────────────────────────────────────
 
     risk_score = step6_data.get("risk_score", "N/A")
     risk_level = step6_data.get("risk_level", "N/A")
@@ -224,11 +278,11 @@ async def stream(payload: dict, config) -> AsyncIterator[str]:
     cs_types   = ", ".join(s.get("composite_signal_type", "") for s in comp_sigs) or "None"
 
     def _finding_line(f: dict) -> str:
-        dp      = f.get("data_points", {})
-        key_dp  = ", ".join(f"{k}: {v}" for k, v in list(dp.items())[:3]) if dp else ""
-        line    = (
+        dp     = f.get("data_points", {})
+        key_dp = ", ".join(f"{k}: {v}" for k, v in list(dp.items())[:3]) if dp else ""
+        line   = (
             f"  {f.get('id','')}: {f.get('pattern','')} ({f.get('severity','')}) — "
-            f"{f.get('description','')[:100]}"
+            f"{f.get('description','')}"
         )
         if key_dp:
             line += f" [{key_dp}]"
@@ -246,98 +300,182 @@ async def stream(payload: dict, config) -> AsyncIterator[str]:
             return ""
         lines = ["Cross-Module Diagnoses:"]
         for f in items:
-            lines.append(f"  {f.get('id','')}: {f.get('pattern','')} ({f.get('severity','')}) — {f.get('description','')[:100]}")
+            lines.append(f"  {f.get('id','')}: {f.get('pattern','')} ({f.get('severity','')}) — {f.get('description','')}")
         return "\n".join(lines)
 
-    sections = [
+    finding_blocks = [
         s for s in [
             _module_block("profitability",        "Profitability"),
             _module_block("balance_sheet_health", "Balance Sheet Health"),
             _module_block("cash_flow_quality",    "Cash Flow Quality"),
+            _module_block("value_distribution",   "Value Distribution (DVA)"),
+            _module_block("equity",               "Equity Movements (DMPL)"),
+            _module_block("auditor",              "Auditor Findings"),
             _stacked_block(),
         ] if s
     ]
 
     step6_block = (
         f"Company: {company_name} — {sector}\n"
-        f"Risk Score: {risk_score}/100 ({risk_level})\n"
+        f"Distress Score: {risk_score}/100 ({risk_level})\n"
         f"Composite Signals: {cs_types}\n\n"
-        + "\n\n".join(sections)
+        + "\n\n".join(finding_blocks)
     )
-
-    # ── Condense Step 7 context ───────────────────────────────────────────────
 
     step7_block = "(Step 7 not yet run)"
     if step7_response:
         try:
-            s7 = json.loads(step7_response) if isinstance(step7_response, str) else step7_response
-            macro   = s7.get("macro_context", {}).get("summary", "")
-            mods    = s7.get("modules", {})
-            prof    = mods.get("profitability",  {}).get("summary", "")
-            bs      = mods.get("balance_sheet",  {}).get("summary", "")
-            cf      = mods.get("cash_flow",      {}).get("summary", "")
-            cross   = mods.get("cross_module",   {}).get("summary", "")
-            change  = mods.get("cross_module",   {}).get("what_would_change_this", "")
+            s7   = json.loads(step7_response) if isinstance(step7_response, str) else step7_response
+            mods = s7.get("modules", {})
             step7_block = (
-                f"Macro context: {macro}\n"
-                f"Profitability: {prof}\n"
-                f"Balance sheet: {bs}\n"
-                f"Cash flow: {cf}\n"
-                f"Cross-module: {cross}\n"
-                f"What would change diagnosis: {change}"
+                f"Macro context: {s7.get('macro_context', {}).get('summary', '')}\n"
+                f"Profitability: {mods.get('profitability', {}).get('summary', '')}\n"
+                f"Balance sheet: {mods.get('balance_sheet', {}).get('summary', '')}\n"
+                f"Cash flow: {mods.get('cash_flow', {}).get('summary', '')}\n"
+                f"Cross-module: {mods.get('cross_module', {}).get('summary', '')}\n"
+                f"What would change diagnosis: {mods.get('cross_module', {}).get('what_would_change_this', '')}\n"
+                f"CFO decision lens: {mods.get('cross_module', {}).get('cfo_lens', '')}"
             )
         except Exception:
             step7_block = str(step7_response)[:600]
 
-    # ── Prompt ───────────────────────────────────────────────────────────────
+    # ── FRE debt context block ────────────────────────────────────────────────
+    fre_block = ""
+    if fre_debt_maturity:
+        near_pct  = fre_debt_maturity.get("near_term_pct")
+        total_d   = fre_debt_maturity.get("total_debt")
+        lg_year   = fre_debt_maturity.get("largest_single_year")
+        lg_pct    = fre_debt_maturity.get("largest_single_year_pct")
+        fx_pct    = fre_debt_currency.get("fx_pct")
+        currencies = fre_debt_currency.get("currencies", {})
+        cur_str   = ", ".join(
+            f"{cur} {v['pct']:.0f}%" for cur, v in list(currencies.items())[:3]
+        ) if currencies else None
 
-    system_prompt = (
-        "CRITICAL: Output ONLY valid JSON. No markdown fences, no preamble, no text outside the JSON.\n\n"
-        "You are a senior financial analyst preparing a concise executive summary for C-suite. "
-        "You integrate automated pattern detection findings with AI specialist context.\n\n"
-        f"Write all text in {lang_str}. "
-        "Respect ALL word limits — a CFO reads this in 30 seconds. "
-        "Be specific and quantitative — include actual numbers, percentages, and periods. "
-        "Do NOT use generic language; every sentence must reference the specific company data provided.\n\n"
-        "For suggested_questions: generate 4-5 follow-up questions a CFO would ask after reading this summary. "
-        "Each question must reference a specific finding, number, hypothesis, or data gap from the analysis — "
-        "not generic questions. Bad: 'Tell me about the balance sheet.' "
-        "Good: 'What portion of the −R$16.5B negative equity is from Alagoas provisions vs. FX losses on USD debt?' "
-        f"Generate questions in {lang_str}.\n\n"
-        f"Generate this exact JSON:\n{_JSON_SCHEMA}"
-    )
+        lines = ["## FRE Debt Structure"]
+        if total_d is not None:
+            lines.append(f"Total bond debt (FRE): BRL {total_d/1_000_000:,.1f}B")
+        if near_pct is not None:
+            lines.append(f"Near-term maturities (≤2 years): {near_pct:.0f}% of total")
+        if lg_year and lg_pct is not None:
+            lines.append(f"Largest single-year maturity: {lg_year} ({lg_pct:.0f}% of total)")
+        if fx_pct is not None:
+            lines.append(f"FX-denominated debt: {fx_pct:.0f}% of total")
+        if cur_str:
+            lines.append(f"Currency breakdown: {cur_str}")
+        fre_block = "\n".join(lines) + "\n\n"
 
-    user_prompt = (
+    ctx = (
         f"## Quantitative Analysis\n\n{step6_block}\n\n"
-        f"## AI Industry Specialist Context\n\n{step7_block}\n\n"
-        "Generate the executive summary JSON."
+        + fre_block
+        + f"## AI Industry Specialist Context\n\n{step7_block}\n\n"
     )
 
-    try:
-        resp = await client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4000,
-            temperature=0.5,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-        )
-        raw = resp.content[0].text
-        logger.info(
-            "Step 8: stop_reason=%s, output_tokens=%d",
-            resp.stop_reason, resp.usage.output_tokens,
-        )
-        if resp.stop_reason == "max_tokens":
-            logger.warning("Step 8 hit max_tokens — response may be truncated")
+    # Shared Phase 1 v2 base_system (defined in step7_ai_agent.py) — keeps
+    # severity calibration and mechanism vocabulary consistent across steps 7 & 8.
+    base_system = build_base_system(lang_str)
 
-        parsed = _parse_fragment(raw)
-        if parsed:
-            yield json.dumps(parsed, ensure_ascii=False)
-        else:
-            logger.error("Step 8 JSON parse failed, yielding raw for main.py fallback")
-            yield raw
-    except Exception as exc:
-        logger.error("Step 8 API call failed: %s", exc)
-        yield MOCK_RESPONSE
+    # ── Single-section call ───────────────────────────────────────────────────
+
+    async def _call(section_key: str, schema: str, instruction: str, max_tok: int) -> dict | None:
+        system = base_system + f"\n\nGenerate ONLY this JSON object:\n{schema}"
+        try:
+            resp = await client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=max_tok,
+                temperature=0.5,
+                system=system,
+                messages=[{"role": "user", "content": ctx + instruction}],
+            )
+            raw = resp.content[0].text
+            logger.info("Step 8 section '%s': stop_reason=%s, output_tokens=%d",
+                        section_key, resp.stop_reason, resp.usage.output_tokens)
+            if resp.stop_reason == "max_tokens":
+                logger.warning("Step 8 section '%s' hit max_tokens", section_key)
+            result = _parse_fragment(raw)
+            if result is None:
+                logger.warning("Step 8 section '%s' unparseable: %s", section_key, raw[:200])
+            return result
+        except Exception as exc:
+            logger.error("Step 8 section '%s' failed: %s", section_key, exc)
+            return None
+
+    # ── Four concurrent calls — yield each section as it completes ────────────
+
+    async def _run_section(section_key: str, schema: str, instruction: str, max_tok: int):
+        result = await _call(section_key, schema, instruction, max_tok)
+        return section_key, result
+
+    tasks = [
+        asyncio.ensure_future(_run_section(
+            "diagnosis", _DIAGNOSIS_SCHEMA,
+            (
+                "Generate the diagnosis section with ALL four fields: "
+                "executive_summary (max 50 words, specific numbers), "
+                "featured_chart (choose the single BRL metric — revenue_abs, cogs_abs, gross_profit_abs, "
+                "ebit_abs, or ebitda_abs — that best visualises the central finding; set secondary_metric "
+                "to a complementary BRL metric or null), "
+                "key_findings (top 4-5 findings as objects), "
+                "and next_step (max 30 words). "
+                "`executive_summary` and `next_step` must echo the decision tension from the CFO "
+                "decision lens above — do not invent a new decision frame. `next_step` should be a "
+                "concrete near-term decision or forced choice tied to one named lever. It should "
+                "not be a generic recommendation, research task, or broad strategic reflection. "
+                "RISK-SCORE REFRAMING (hard): if the supplied findings include a deterministic "
+                "`risk_score` or severity tag of HIGH / CRITICAL, treat these as SIGNAL INTENSITY, "
+                "PATTERN INTENSITY, or ANOMALY INTENSITY indicators only — never as company "
+                "condition. Whenever you reference the risk score in `executive_summary`, "
+                "`what_happened`, `how_serious`, `what_comes_next`, or `next_step`, use one of "
+                "these framings explicitly: \"signal intensity\", \"pattern intensity\", \"anomaly "
+                "intensity\", \"risk-signal intensity\", \"signal strength\". Do NOT echo the word "
+                "\"CRITICAL\" as a condition descriptor; if you must reference a CRITICAL tag, "
+                "always qualify it — \"CRITICAL-intensity signal\", \"high-intensity pattern\" — "
+                "never \"critical risk\", \"critical condition\", or \"critical deterioration\". "
+                "If the risk score is 100/100 but severity_posture is pressure or deterioration, "
+                "the executive summary must explicitly state that the score reflects pattern "
+                "convergence, not distress."
+            ),
+            1500,
+        )),
+        asyncio.ensure_future(_run_section(
+            "timeline", _TIMELINE_SCHEMA,
+            "Generate the timeline section: what_happened and when_things_turned. "
+            + _SEVERITY_VOCAB_GATE,
+            800,
+        )),
+        asyncio.ensure_future(_run_section(
+            "severity", _SEVERITY_SCHEMA,
+            "Generate the severity section: how_serious and what_comes_next."
+            + (
+                " Incorporate the FRE debt maturity concentration and FX exposure in how_serious."
+                if fre_available else ""
+            )
+            + " " + _SEVERITY_VOCAB_GATE,
+            800,
+        )),
+        asyncio.ensure_future(_run_section(
+            "gaps", _GAPS_SCHEMA,
+            "Generate the gaps section: what_we_cant_answer, data_gaps (3 items), "
+            "and suggested_questions (4-5 CFO questions that reference specific findings, numbers, or data gaps)."
+            + (
+                (
+                    " FRE debt structure is available (see above). Reference the specific maturity concentration, "
+                    "FX exposure, and currency breakdown in your suggested questions and gaps analysis."
+                ) if fre_available else (
+                    " Note: FRE (Formulário de Referência) data was not available for this company. "
+                    "Include 'Debt maturity profile and currency exposure unavailable — FRE data not loaded.' "
+                    "as part of what_we_cant_answer."
+                )
+            )
+            + " " + _SEVERITY_VOCAB_GATE,
+            1000,
+        )),
+    ]
+
+    for fut in asyncio.as_completed(tasks):
+        section_key, result = await fut
+        data = result or dict(_SECTION_DEFAULTS[section_key])
+        yield json.dumps({"__section": section_key, "data": data}, ensure_ascii=False)
 
 
 # ── REST run handler ──────────────────────────────────────────────────────────

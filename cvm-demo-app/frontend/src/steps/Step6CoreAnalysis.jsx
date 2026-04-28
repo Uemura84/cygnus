@@ -9,7 +9,7 @@ const SEVERITY_BADGE = { HIGH: styles.badgeHigh, MEDIUM: styles.badgeMedium, LOW
 const SEVERITY_ORDER = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
 const CONFIDENCE_BADGE = { HIGH: styles.badgeLow, MEDIUM: styles.badgeMedium, LOW: styles.badgeHigh }
 
-const SEVERITY_BORDER = { CRITICAL: '#991b1b', HIGH: '#E24B4A', MEDIUM: '#EF9F27', LOW: 'var(--blue)' }
+const SEVERITY_BORDER = { CRITICAL: '#991b1b', HIGH: '#E24B4A', MEDIUM: '#EF9F27', LOW: 'var(--teal)' }
 
 function formatKey(key) {
   return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -22,40 +22,58 @@ function formatDpValue(val) {
 }
 
 // Module grouping configuration
-const MODULE_ORDER = ['profitability', 'balance_sheet_health', 'cash_flow_quality', 'stacked']
+const MODULE_ORDER = ['profitability', 'balance_sheet_health', 'cash_flow_quality', 'value_distribution', 'equity', 'auditor', 'stacked']
 
 // All module headers use navy. Modules are differentiated by Signal Blue left border opacity.
 const MODULE_STYLE = {
   profitability: {
     headerColor: '#fff',
     headerBg: 'var(--navy)',
-    headerBorder: 'var(--blue)',         // full opacity — primary module
-    accentBorder: 'rgba(30,144,255,1.0)',
+    headerBorder: 'var(--teal)',         // full opacity — primary module
+    accentBorder: 'rgba(14,143,154,1.0)',
   },
   balance_sheet_health: {
     headerColor: '#fff',
     headerBg: 'var(--navy)',
-    headerBorder: 'rgba(30,144,255,0.55)', // 55% opacity
-    accentBorder: 'rgba(30,144,255,0.55)',
+    headerBorder: 'rgba(14,143,154,0.55)', // 55% opacity
+    accentBorder: 'rgba(14,143,154,0.55)',
   },
   cash_flow_quality: {
     headerColor: '#fff',
     headerBg: 'var(--navy)',
-    headerBorder: 'rgba(30,144,255,0.35)', // 35% opacity
-    accentBorder: 'rgba(30,144,255,0.35)',
+    headerBorder: 'rgba(14,143,154,0.35)', // 35% opacity
+    accentBorder: 'rgba(14,143,154,0.35)',
+  },
+  value_distribution: {
+    headerColor: '#fff',
+    headerBg: '#1a3a5c',                 // deep blue — value chain perspective
+    headerBorder: 'rgba(14,143,154,0.6)',
+    accentBorder: 'rgba(14,143,154,0.6)',
+  },
+  equity: {
+    headerColor: '#fff',
+    headerBg: '#1e3a2f',                 // dark green — equity/ownership signal
+    headerBorder: '#22c55e',
+    accentBorder: '#22c55e',
+  },
+  auditor: {
+    headerColor: '#fff',
+    headerBg: '#7f1d1d',                 // deep red — auditor is an external signal
+    headerBorder: '#ef4444',
+    accentBorder: '#ef4444',
   },
   stacked: {
     headerColor: '#fff',
     headerBg: 'var(--navy)',
-    headerBorder: 'var(--blue)',         // full opacity — diagnoses are prominent
-    accentBorder: 'var(--blue)',
+    headerBorder: 'var(--teal)',         // full opacity — diagnoses are prominent
+    accentBorder: 'var(--teal)',
   },
 }
 
 const CATEGORY_ORDER = ['core', 'supporting', 'contextual', 'anomalies']
 
 const CATEGORY_STYLE = {
-  core: { border: '2px solid var(--blue)', background: 'var(--blue-dim)', titleColor: 'var(--blue)' },
+  core: { border: '2px solid var(--teal)', background: 'var(--teal-dim)', titleColor: 'var(--teal)' },
   supporting: { border: '1px solid rgba(11,31,58,0.07)', background: '#fff', titleColor: 'var(--charcoal)' },
   contextual: { border: '1px solid rgba(11,31,58,0.07)', background: 'var(--offwhite)', titleColor: 'var(--gray)' },
   anomalies: { border: '1px solid rgba(239,159,39,0.3)', background: 'rgba(239,159,39,0.05)', titleColor: '#EF9F27' },
@@ -81,7 +99,7 @@ export default function Step6CoreAnalysis({ stepState, data }) {
   }
 
   // Group findings by module
-  const byModule = { profitability: [], balance_sheet_health: [], cash_flow_quality: [], stacked: [] }
+  const byModule = { profitability: [], balance_sheet_health: [], cash_flow_quality: [], value_distribution: [], equity: [], auditor: [], stacked: [] }
   if (d?.findings) {
     for (const f of d.findings) {
       const mod = f.module || 'profitability'
@@ -107,15 +125,21 @@ export default function Step6CoreAnalysis({ stepState, data }) {
     profByCategory[cat].sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
   }
 
-  // For BS and CF: sort by severity only
+  // For BS, CF, DVA, equity, Auditor: sort by severity only
   byModule.balance_sheet_health.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
   byModule.cash_flow_quality.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
+  byModule.value_distribution.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
+  byModule.equity.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
+  byModule.auditor.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
   byModule.stacked.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 4) - (SEVERITY_ORDER[b.severity] ?? 4))
 
   const MODULE_LABEL = {
     profitability: t.step6.module_profitability ?? 'Profitability Analysis',
     balance_sheet_health: t.step6.module_balance_sheet ?? 'Balance Sheet Health',
     cash_flow_quality: t.step6.module_cash_flow ?? 'Cash Flow Quality',
+    value_distribution: t.step6.module_value_distribution ?? 'Value Distribution (DVA)',
+    equity: t.step6.module_equity ?? 'Equity Movements (DMPL)',
+    auditor: t.step6.module_auditor ?? 'Auditor',
     stacked: t.step6.module_diagnoses ?? 'Cross-Module Diagnoses',
   }
 
@@ -123,6 +147,9 @@ export default function Step6CoreAnalysis({ stepState, data }) {
     profitability: d?.profitability_findings_count,
     balance_sheet_health: d?.bs_findings_count,
     cash_flow_quality: d?.cf_findings_count,
+    value_distribution: d?.dva_findings_count,
+    equity: d?.equity_findings_count,
+    auditor: d?.auditor_findings_count,
     stacked: d?.stacked_diagnoses_count,
   }
 
@@ -151,8 +178,8 @@ export default function Step6CoreAnalysis({ stepState, data }) {
             <div className={styles.statsGrid} style={{ flex: 1 }}>
               <Stat label={t.step6.algorithms_run} value={d.algorithms_run?.length} />
               <Stat label={t.step6.raw_findings} value={d.raw_findings} />
-              <Stat label={t.step6.risk_score} value={d.risk_score != null ? d.risk_score.toFixed(1) : '—'} />
-              <Stat label={t.step6.risk_level} value={d.risk_level} />
+              <Stat label={t.step6.distress_score ?? t.step6.risk_score} value={d.risk_score != null ? Math.round(d.risk_score) : '—'} />
+              <Stat label={t.step6.distress_band ?? t.step6.risk_level} value={d.risk_level} />
             </div>
             {d.risk_score != null && (
               <RiskGauge score={d.risk_score} level={d.risk_level} />
@@ -160,7 +187,7 @@ export default function Step6CoreAnalysis({ stepState, data }) {
           </div>
 
           {/* Module counts summary */}
-          {(d.bs_findings_count > 0 || d.cf_findings_count > 0 || d.stacked_diagnoses_count > 0) && (
+          {(d.bs_findings_count > 0 || d.cf_findings_count > 0 || d.auditor_findings_count > 0 || d.stacked_diagnoses_count > 0) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
               {d.profitability_findings_count > 0 && (
                 <ModuleCountBadge label={MODULE_LABEL.profitability} count={d.profitability_findings_count} opacity={1} />
@@ -170,6 +197,15 @@ export default function Step6CoreAnalysis({ stepState, data }) {
               )}
               {d.cf_findings_count > 0 && (
                 <ModuleCountBadge label={MODULE_LABEL.cash_flow_quality} count={d.cf_findings_count} opacity={0.35} />
+              )}
+              {d.dva_findings_count > 0 && (
+                <ModuleCountBadge label={MODULE_LABEL.value_distribution} count={d.dva_findings_count} color="rgba(14,143,154,0.8)" bg="rgba(14,143,154,0.08)" />
+              )}
+              {d.equity_findings_count > 0 && (
+                <ModuleCountBadge label={MODULE_LABEL.equity} count={d.equity_findings_count} color="#22c55e" bg="rgba(34,197,94,0.08)" />
+              )}
+              {d.auditor_findings_count > 0 && (
+                <ModuleCountBadge label={MODULE_LABEL.auditor} count={d.auditor_findings_count} color="#ef4444" />
               )}
               {d.stacked_diagnoses_count > 0 && (
                 <ModuleCountBadge label={MODULE_LABEL.stacked} count={d.stacked_diagnoses_count} opacity={1} />
@@ -208,7 +244,7 @@ export default function Step6CoreAnalysis({ stepState, data }) {
                   if (!catFindings?.length) return null
                   return (
                     <div key={cat} style={{ marginBottom: '20px' }}>
-                      <h5 style={{ fontSize: '0.66rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.13em', color: 'var(--blue)', fontFamily: "'JetBrains Mono', monospace", marginBottom: '8px' }}>
+                      <h5 style={{ fontSize: '0.66rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.13em', color: 'var(--teal)', fontFamily: "'IBM Plex Mono', monospace", marginBottom: '8px' }}>
                         {CATEGORY_LABEL[cat]}
                       </h5>
                       {catFindings.map((f) => (
@@ -228,7 +264,7 @@ export default function Step6CoreAnalysis({ stepState, data }) {
                 moduleStyle={MODULE_STYLE.balance_sheet_health}
               >
                 {byModule.balance_sheet_health.map((f) => (
-                  <FindingCard key={f.id} f={f} cardStyle={{ border: '1px solid var(--blue-line)', background: '#fff' }} timeSeries={timeSeries} t={t} />
+                  <FindingCard key={f.id} f={f} cardStyle={{ border: '1px solid var(--teal-line)', background: '#fff' }} timeSeries={timeSeries} t={t} />
                 ))}
               </ModuleSection>
             )}
@@ -241,7 +277,46 @@ export default function Step6CoreAnalysis({ stepState, data }) {
                 moduleStyle={MODULE_STYLE.cash_flow_quality}
               >
                 {byModule.cash_flow_quality.map((f) => (
-                  <FindingCard key={f.id} f={f} cardStyle={{ border: '1px solid rgba(30,144,255,0.15)', background: '#fff' }} timeSeries={timeSeries} t={t} />
+                  <FindingCard key={f.id} f={f} cardStyle={{ border: '1px solid rgba(14,143,154,0.15)', background: '#fff' }} timeSeries={timeSeries} t={t} />
+                ))}
+              </ModuleSection>
+            )}
+
+            {/* Module 5: Value Distribution (DVA) */}
+            {byModule.value_distribution.length > 0 && (
+              <ModuleSection
+                label={MODULE_LABEL.value_distribution}
+                count={d.dva_findings_count}
+                moduleStyle={MODULE_STYLE.value_distribution}
+              >
+                {byModule.value_distribution.map((f) => (
+                  <FindingCard key={f.id} f={f} cardStyle={{ border: '1px solid rgba(14,143,154,0.2)', background: '#fff' }} timeSeries={timeSeries} t={t} />
+                ))}
+              </ModuleSection>
+            )}
+
+            {/* Module 6: Equity Movements (DMPL) */}
+            {byModule.equity.length > 0 && (
+              <ModuleSection
+                label={MODULE_LABEL.equity}
+                count={d.equity_findings_count}
+                moduleStyle={MODULE_STYLE.equity}
+              >
+                {byModule.equity.map((f) => (
+                  <FindingCard key={f.id} f={f} cardStyle={{ border: '1px solid rgba(34,197,94,0.2)', background: 'rgba(34,197,94,0.03)' }} timeSeries={timeSeries} t={t} />
+                ))}
+              </ModuleSection>
+            )}
+
+            {/* Module 4: Auditor */}
+            {byModule.auditor.length > 0 && (
+              <ModuleSection
+                label={MODULE_LABEL.auditor}
+                count={d.auditor_findings_count}
+                moduleStyle={MODULE_STYLE.auditor}
+              >
+                {byModule.auditor.map((f) => (
+                  <FindingCard key={f.id} f={f} cardStyle={{ border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.04)' }} timeSeries={timeSeries} t={t} />
                 ))}
               </ModuleSection>
             )}
@@ -267,19 +342,23 @@ export default function Step6CoreAnalysis({ stepState, data }) {
   )
 }
 
-function ModuleCountBadge({ label, count, opacity = 1 }) {
-  const border = opacity < 1 ? `rgba(30,144,255,${opacity})` : 'var(--blue)'
+function ModuleCountBadge({ label, count, opacity = 1, color = null, bg: bgProp = null }) {
+  const baseColor = color ?? 'var(--teal)'
+  const border = color
+    ? color
+    : (opacity < 1 ? `rgba(14,143,154,${opacity})` : 'var(--teal)')
+  const bg = bgProp ?? (color ? `rgba(239,68,68,0.08)` : 'var(--teal-dim)')
   return (
     <span style={{
       fontSize: '0.72rem',
       fontWeight: 600,
-      color: 'var(--blue)',
-      background: 'var(--blue-dim)',
+      color: baseColor,
+      background: bg,
       border: `1px solid ${border}`,
       borderRadius: '12px',
       padding: '3px 10px',
-      fontFamily: "'JetBrains Mono', monospace",
-      opacity: opacity < 1 ? 0.7 + (0.3 * opacity) : 1,
+      fontFamily: "'IBM Plex Mono', monospace",
+      opacity: (!color && opacity < 1) ? 0.7 + (0.3 * opacity) : 1,
     }}>
       {label}: {count}
     </span>
@@ -322,14 +401,14 @@ function ModuleSection({ label, count, moduleStyle, isdiagnosis, children }) {
 
 function DiagnosisCard({ f, t }) {
   const [expanded, setExpanded] = useState(true)
-  const borderColor = SEVERITY_BORDER[f.severity] || 'var(--blue)'
+  const borderColor = SEVERITY_BORDER[f.severity] || 'var(--teal)'
   const contributing = f.contributing_signals
 
   return (
     <div style={{
       marginBottom: '12px',
-      background: 'var(--blue-dim)',
-      border: '1px solid var(--blue-line)',
+      background: 'var(--teal-dim)',
+      border: '1px solid var(--teal-line)',
       borderLeft: `4px solid ${borderColor}`,
       borderRadius: '6px',
       padding: '14px 16px',
@@ -337,10 +416,10 @@ function DiagnosisCard({ f, t }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
         <span style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: "'IBM Plex Mono', monospace",
           fontSize: '0.7rem',
-          color: 'var(--blue)',
-          background: 'var(--blue-dim)',
+          color: 'var(--teal)',
+          background: 'var(--teal-dim)',
           padding: '2px 7px',
           borderRadius: '4px',
           flexShrink: 0,
@@ -357,7 +436,7 @@ function DiagnosisCard({ f, t }) {
       {contributing && Object.keys(contributing).length > 0 && (
         <div>
           <button
-            style={{ fontSize: '0.75rem', color: 'var(--blue)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '8px' }}
+            style={{ fontSize: '0.75rem', color: 'var(--teal)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: '8px' }}
             onClick={() => setExpanded(v => !v)}
           >
             {expanded
@@ -367,19 +446,26 @@ function DiagnosisCard({ f, t }) {
           {expanded && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {Object.entries(contributing).map(([moduleName, signals]) =>
-                signals.map((s, i) => (
-                  <span key={`${moduleName}-${i}`} style={{
-                    fontSize: '0.72rem',
-                    background: 'var(--blue-dim)',
-                    color: 'var(--blue)',
-                    border: '1px solid var(--blue-line)',
-                    borderRadius: '4px',
-                    padding: '2px 8px',
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}>
-                    {s.code || s.signal} <span style={{ opacity: 0.65 }}>({moduleName})</span>
-                  </span>
-                ))
+                signals.map((s, i) => {
+                  const signalLabel = (s.signal || s.code || '')
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase())
+                  const moduleLabel = moduleName
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase())
+                  return (
+                    <span key={`${moduleName}-${i}`} style={{
+                      fontSize: '0.72rem',
+                      background: 'var(--teal-dim)',
+                      color: 'var(--teal)',
+                      border: '1px solid var(--teal-line)',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                    }}>
+                      {signalLabel} <span style={{ opacity: 0.65 }}>({moduleLabel})</span>
+                    </span>
+                  )
+                })
               )}
             </div>
           )}
@@ -391,7 +477,7 @@ function DiagnosisCard({ f, t }) {
 
 function FindingCard({ f, cardStyle, timeSeries, t }) {
   const [showChart, setShowChart] = useState(false)
-  const borderColor = SEVERITY_BORDER[f.severity] || 'var(--blue)'
+  const borderColor = SEVERITY_BORDER[f.severity] || 'var(--teal)'
 
   return (
     <div style={{
@@ -406,10 +492,10 @@ function FindingCard({ f, cardStyle, timeSeries, t }) {
       {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
         <span style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: "'IBM Plex Mono', monospace",
           fontSize: '0.7rem',
-          color: 'var(--blue)',
-          background: 'var(--blue-dim)',
+          color: 'var(--teal)',
+          background: 'var(--teal-dim)',
           padding: '2px 7px',
           borderRadius: '4px',
           flexShrink: 0,
@@ -475,7 +561,7 @@ function FindingCard({ f, cardStyle, timeSeries, t }) {
 
       {/* Chart toggle */}
       <button
-        style={{ fontSize: '0.78rem', color: 'var(--blue)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        style={{ fontSize: '0.78rem', color: 'var(--teal)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
         onClick={() => setShowChart(prev => !prev)}
       >
         {showChart ? t.step6.hide_chart : t.step6.show_chart}

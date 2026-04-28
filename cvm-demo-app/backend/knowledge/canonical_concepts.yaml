@@ -1,0 +1,64 @@
+# Minimal canonical finance vocabulary for Cygnus v1.
+# Each concept represents a normalized financial meaning.
+# Findings and relationships reference these concepts to ground
+# reasoning in financial structure, not detector labels.
+
+revenue:
+  label: "Revenue"
+  category: performance
+
+cogs:
+  label: "Cost of Goods Sold"
+  category: performance
+
+gross_profit:
+  label: "Gross Profit"
+  category: performance
+
+ebitda:
+  label: "EBITDA"
+  category: performance
+
+net_income:
+  label: "Net Income"
+  category: performance
+
+accounts_receivable:
+  label: "Accounts Receivable"
+  category: working_capital
+
+inventory:
+  label: "Inventory"
+  category: working_capital
+
+accounts_payable:
+  label: "Accounts Payable"
+  category: working_capital
+
+working_capital:
+  label: "Working Capital"
+  category: working_capital
+
+cash_conversion_cycle:
+  label: "Cash Conversion Cycle"
+  category: working_capital
+
+operating_cash_flow:
+  label: "Operating Cash Flow"
+  category: cash
+
+free_cash_flow:
+  label: "Free Cash Flow"
+  category: cash
+
+capex:
+  label: "CAPEX"
+  category: cash
+
+debt:
+  label: "Debt"
+  category: capital_structure
+
+equity:
+  label: "Equity"
+  category: capital_structure

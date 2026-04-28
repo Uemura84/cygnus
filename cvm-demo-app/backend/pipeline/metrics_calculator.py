@@ -55,8 +55,19 @@ def _company_search_key(company_name: str) -> str:
     return company_name.split()[0].upper()
 
 
-def _read_dfc_from_zip(zip_path: Path, company_key: str) -> pd.DataFrame:
-    """Read DFC_MI_con CSV files from a ZIP, filtered to company_key."""
+def _company_filter_mask(series, company_name: str):
+    """Exact match first, fallback to first-word substring match."""
+    upper = series.str.upper().str.strip()
+    full_name = company_name.strip().upper()
+    exact = upper == full_name
+    if exact.any():
+        return exact
+    key = company_name.split()[0].upper()
+    return upper.str.contains(key, na=False)
+
+
+def _read_dfc_from_zip(zip_path: Path, company_name: str) -> pd.DataFrame:
+    """Read DFC_MI_con CSV files from a ZIP, filtered to company."""
     frames = []
     try:
         with zipfile.ZipFile(zip_path, "r") as zf:
@@ -72,7 +83,7 @@ def _read_dfc_from_zip(zip_path: Path, company_key: str) -> pd.DataFrame:
                         continue
                     if "ORDEM_EXERC" in df.columns:
                         df = df[df["ORDEM_EXERC"] == ORDEM_EXERC_KEEP].copy()
-                    mask = df["DENOM_CIA"].str.upper().str.contains(company_key, na=False)
+                    mask = _company_filter_mask(df["DENOM_CIA"], company_name)
                     df = df[mask]
                     if not df.empty:
                         frames.append(df)
@@ -306,7 +317,7 @@ def compute_metrics(company_name: str, data_dir: Path, years: list) -> pd.DataFr
             zip_path = raw_dir / f"{doc_type}_cia_aberta_{year}.zip"
             if not zip_path.exists():
                 continue
-            df_dfc = _read_dfc_from_zip(zip_path, company_key)
+            df_dfc = _read_dfc_from_zip(zip_path, company_name)
             if not df_dfc.empty:
                 dfc_frames.append(df_dfc)
 
@@ -626,10 +637,9 @@ def _read_statement_from_zips(
                             if "ORDEM_EXERC" in df.columns:
                                 df = df[df["ORDEM_EXERC"] == ORDEM_EXERC_KEEP].copy()
                             # Company + holding exclusion filter
-                            mask = df["DENOM_CIA"].str.upper().str.contains(
-                                company_key, na=False)
+                            mask = _company_filter_mask(df["DENOM_CIA"], company_name)
                             for excl in exclude:
-                                mask &= ~df["DENOM_CIA"].str.upper().str.contains(
+                                mask = mask & ~df["DENOM_CIA"].str.upper().str.contains(
                                     excl, na=False)
                             df = df[mask].copy()
                             if not df.empty:

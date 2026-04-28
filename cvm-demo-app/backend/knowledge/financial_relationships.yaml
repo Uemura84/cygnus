@@ -1,0 +1,252 @@
+# Financial Relationship Registry — Cygnus v1
+# Each relationship represents a known financial mechanism,
+# grounded in canonical financial concepts.
+# The reasoning engine matches findings against these relationships,
+# grounded in canonical financial concepts, to build evidence chains
+# and rank explanations.
+
+# --- Profitability mechanisms ---
+
+cost_stickiness:
+  description: "Costs did not flex downward when revenue declined"
+  category: profitability
+  concepts:
+    core: [revenue, cogs, gross_profit]
+    driver_candidates: [cogs]
+    outcome_concepts: [gross_profit, ebitda]
+  requires:
+    - algorithm: cost_composition_drift
+      condition: "direction == 'deteriorating'"
+    - algorithm: revenue_cost_decoupling
+      condition: "divergence_pp > 10"
+  distinguishers:
+    - check: "sga_drift_present"
+      if_true: "Broad cost structure rigidity, not input-specific"
+      if_false: "Input cost or product mix issue"
+  connects_to: [margin_compression, liquidity_exhaustion]
+  weight: 1.0
+
+margin_compression:
+  description: "Sustained margin decline driven by cost-revenue imbalance"
+  category: profitability
+  concepts:
+    core: [revenue, cogs, gross_profit, ebitda]
+    driver_candidates: [cogs, revenue]
+    outcome_concepts: [gross_profit, ebitda, net_income]
+  requires:
+    - algorithm: margin_trend
+      condition: "direction == 'compression'"
+  distinguishers:
+    - check: "consecutive_decline_periods >= 4"
+      if_true: "Persistent structural compression — not cyclical"
+      if_false: "May be cyclical — check against sector cycle"
+  connects_to: [earnings_quality_gap, asset_efficiency_decline]
+  weight: 1.0
+
+revenue_collapse_with_rigid_costs:
+  description: "Revenue declined sharply but costs did not adjust proportionally"
+  category: profitability
+  concepts:
+    core: [revenue, cogs, gross_profit]
+    driver_candidates: [revenue]
+    outcome_concepts: [gross_profit, ebitda]
+  requires:
+    - algorithm: revenue_cost_decoupling
+      condition: "divergence_pp > 20 and revenue_change_pct < -10"
+  connects_to: [cost_stickiness, margin_compression]
+  weight: 1.0
+
+# --- Balance sheet mechanisms ---
+
+overleveraged_capital_structure:
+  description: "Debt burden exceeds earnings capacity to service it"
+  category: balance_sheet
+  concepts:
+    core: [debt, ebitda, equity]
+    driver_candidates: [debt]
+    outcome_concepts: [equity, free_cash_flow]
+  requires:
+    - algorithm: leverage_escalation
+      condition: "severity in ['HIGH', 'CRITICAL']"
+  distinguishers:
+    - check: "equity_negative"
+      if_true: "Technical insolvency — equity consumed by losses"
+      if_false: "High leverage but solvent — refinancing dependent"
+  connects_to: [refinancing_pressure, debt_funded_distributions]
+  weight: 1.0
+
+liquidity_exhaustion:
+  description: "Operating cash generation insufficient for current obligations"
+  category: balance_sheet
+  concepts:
+    core: [operating_cash_flow, free_cash_flow, working_capital, debt]
+    driver_candidates: [operating_cash_flow, free_cash_flow]
+    outcome_concepts: [working_capital, equity]
+  requires:
+    - algorithm: liquidity_stress
+      condition: "severity in ['HIGH', 'CRITICAL']"
+    - algorithm: fcf_erosion
+  distinguishers:
+    - check: "equity_negative"
+      if_true: "Technical insolvency"
+      if_false: "Timing mismatch — may be bridgeable"
+  connects_to: [refinancing_pressure]
+  weight: 1.0
+
+working_capital_cash_trap:
+  description: "Cash locked in receivables and inventory, unavailable for operations"
+  category: balance_sheet
+  concepts:
+    core: [accounts_receivable, inventory, accounts_payable, working_capital, cash_conversion_cycle, operating_cash_flow]
+    driver_candidates: [accounts_receivable, inventory, accounts_payable]
+    outcome_concepts: [operating_cash_flow, free_cash_flow]
+  requires:
+    - algorithm: working_capital_deterioration
+    - algorithm: ccc_expansion
+  distinguishers:
+    - check: "inventory_days_growing"
+      if_true: "Inventory accumulation — demand weakness or overproduction"
+      if_false: "Receivables-driven — collection problems or customer credit risk"
+  connects_to: [liquidity_exhaustion]
+  weight: 1.0
+
+refinancing_pressure:
+  description: "Near-term debt maturities exceed cash generation capacity"
+  category: balance_sheet
+  concepts:
+    core: [debt, free_cash_flow, equity]
+    driver_candidates: [debt]
+    outcome_concepts: [equity, operating_cash_flow]
+  requires:
+    - algorithm: debt_maturity_wall
+    - algorithm: leverage_escalation
+  distinguishers:
+    - check: "fx_debt_concentration_present"
+      if_true: "FX-denominated debt adds exchange rate risk to refinancing"
+      if_false: "Domestic currency debt — refinancing risk is rate-dependent"
+  connects_to: []
+  weight: 1.0
+
+# --- Cash flow mechanisms ---
+
+earnings_quality_gap:
+  description: "Reported earnings not converting to cash"
+  category: cash_flow
+  concepts:
+    core: [net_income, operating_cash_flow, working_capital]
+    driver_candidates: [working_capital, net_income]
+    outcome_concepts: [operating_cash_flow, free_cash_flow]
+  requires:
+    - algorithm: earnings_quality
+      condition: "severity in ['HIGH', 'CRITICAL']"
+  distinguishers:
+    - check: "working_capital_drain_present"
+      if_true: "Working capital absorbing cash before it reaches OCF"
+      if_false: "Non-cash income items inflating reported earnings"
+  connects_to: [debt_funded_distributions]
+  weight: 1.0
+
+capex_starvation:
+  description: "Investment below asset replacement rate — consuming the asset base"
+  category: cash_flow
+  concepts:
+    core: [capex, free_cash_flow]
+    driver_candidates: [capex]
+    outcome_concepts: [free_cash_flow]
+  requires:
+    - algorithm: capex_starvation
+  distinguishers:
+    - check: "fcf_negative"
+      if_true: "Capex cut to conserve cash in distress — survival mode"
+      if_false: "Deliberate harvest strategy — extracting value before exit or transition"
+  connects_to: [asset_efficiency_decline]
+  weight: 0.8
+
+debt_funded_distributions:
+  description: "Dividends or buybacks funded by borrowing, not operating cash"
+  category: cash_flow
+  concepts:
+    core: [free_cash_flow, debt, equity]
+    driver_candidates: [free_cash_flow]
+    outcome_concepts: [debt, equity]
+  requires:
+    - algorithm: dividend_sustainability
+    - algorithm: debt_dependency
+  distinguishers:
+    - check: "equity_eroding"
+      if_true: "Accelerating insolvency path — distributing while losing money"
+      if_false: "Deliberate capital structure decision — may be sustainable if temporary"
+  connects_to: [overleveraged_capital_structure]
+  weight: 1.0
+
+fcf_destruction:
+  description: "Persistent inability to generate free cash flow from operations"
+  category: cash_flow
+  concepts:
+    core: [operating_cash_flow, capex, free_cash_flow]
+    driver_candidates: [operating_cash_flow, capex]
+    outcome_concepts: [free_cash_flow, debt]
+  requires:
+    - algorithm: fcf_erosion
+      condition: "consecutive_negative >= 3"
+  distinguishers:
+    - check: "capex_starvation_present"
+      if_true: "FCF negative even with reduced investment — core operations cash-consumptive"
+      if_false: "FCF negative due to elevated capex — may be investment phase"
+  connects_to: [liquidity_exhaustion, debt_funded_distributions]
+  weight: 1.0
+
+# --- Value distribution mechanisms ---
+
+value_transfer_to_creditors:
+  description: "Growing share of created value flowing to lenders at expense of equity holders"
+  category: cross_module
+  concepts:
+    core: [debt, equity, net_income]
+    driver_candidates: [debt]
+    outcome_concepts: [equity]
+  requires:
+    - algorithm: lender_share_escalation
+    - algorithm: shareholder_value_erosion
+  distinguishers:
+    - check: "going_concern_present"
+      if_true: "Creditors extracting value from a distressed entity"
+      if_false: "Leverage cost rising but company may still be viable"
+  connects_to: [overleveraged_capital_structure]
+  weight: 0.9
+
+# --- Governance / auditor mechanisms ---
+
+auditor_confirmation_of_distress:
+  description: "Independent auditor confirms financial viability concerns"
+  category: governance
+  concepts:
+    core: [equity, debt, operating_cash_flow]
+    driver_candidates: []
+    outcome_concepts: [equity]
+  requires:
+    - algorithm: going_concern
+      condition: "severity == 'CRITICAL'"
+  distinguishers:
+    - check: "equity_negative"
+      if_true: "Going concern with technical insolvency — restructuring or liquidation path"
+      if_false: "Going concern with positive equity — operational turnaround still possible"
+  connects_to: []
+  weight: 1.2
+
+equity_erosion_from_distributions:
+  description: "Equity base being consumed by dividend payments during loss periods"
+  category: governance
+  concepts:
+    core: [equity, net_income, free_cash_flow]
+    driver_candidates: [net_income]
+    outcome_concepts: [equity]
+  requires:
+    - algorithm: dividend_exceeds_income
+      condition: "severity in ['HIGH']"
+  distinguishers:
+    - check: "consecutive_loss_years >= 2"
+      if_true: "Persistent pattern — governance failure to suspend distributions"
+      if_false: "Single-period event — may be timing or contractual obligation"
+  connects_to: [debt_funded_distributions, overleveraged_capital_structure]
+  weight: 0.9

@@ -1,0 +1,103 @@
+{
+  "company": {
+    "name": "BRASKEM S.A.",
+    "sector_id": "PETROCHEMICAL"
+  },
+  "analysis_window": {
+    "latest_annual_period": "2025-12-31",
+    "annual_periods": ["2020", "2021", "2022", "2023", "2024", "2025"],
+    "gross_margin_trajectory_pct": [19.1, 30.4, 11.8, 4.3, 7.8, 2.2]
+  },
+  "gating_inputs": {
+    "G01_negative_equity": {
+      "fires": true,
+      "closing_equity_brl_b": -16.5,
+      "period": "2025-12-31"
+    },
+    "G02_going_concern": {
+      "fires": true,
+      "auditor": "KPMG AUDITORES INDEPENDENTES LTDA",
+      "period": "2025-12-31",
+      "emphasis_topics": "significant losses and negative equity; current liabilities exceeding total assets; impairment assessment"
+    },
+    "G03_persistent_liquidity_stress": {
+      "fires": false,
+      "current_ratio_history": [
+        { "period": "2024", "value": 1.31 },
+        { "period": "2025", "value": 0.76 }
+      ],
+      "reason_not_fired": "Only 1 annual period with current ratio < 1.0; requires >=2 consecutive"
+    },
+    "G04_distributing_while_insolvent": {
+      "fires": false,
+      "reason_not_fired": "G05 takes precedence when both match"
+    },
+    "G05_financing_dependence_for_payouts": {
+      "fires": true,
+      "periods_fcf_negative_with_dividends": 3,
+      "periods_financing_cf_positive": 1,
+      "evidence": "Dividends paid while FCF negative in 6 periods; financing CF positive in 1 consecutive period"
+    },
+    "G06_technical_insolvency_trajectory": {
+      "fires": false,
+      "equity_trajectory_brl_b": [3.9, -3.9, 6.2, 6.1, 3.3, -4.3, -16.5],
+      "reason_not_fired": "Equity recovered in 2021 then declined; not 3 consecutive annual declines at start of streak"
+    }
+  },
+  "fundamentals_inputs": {
+    "latest_annual_period": "2025-12-31",
+    "ebit_margin_pct":        -2.6,
+    "free_cash_flow_brl_b_latest": -7.3,
+    "fcf_last_3_years": [
+      { "period": "2023", "fcf_brl_b": -6.8 },
+      { "period": "2024", "fcf_brl_b": -1.3 },
+      { "period": "2025", "fcf_brl_b": -7.3 }
+    ],
+    "debt_to_ebitda": 14.4,
+    "current_ratio":   0.76
+  },
+  "findings": [
+    {
+      "id": "F001",
+      "signal_type": "margin_compression",
+      "classification_hint": "structural",
+      "classification_reason": "Persistent compression averaging 4.6pp/year for 4+ periods; current level 2.2% at or below sector gross margin lower bound",
+      "evidence": "Gross margin 19.1% (2020) -> 2.2% (2025); historical avg 12.6%"
+    },
+    {
+      "id": "F003",
+      "signal_type": "cost_composition_drift",
+      "classification_hint": "structural",
+      "classification_reason": "COGS/Revenue at 95.3% in latest period approaches sector upper bound of 120%; sustained >80% for 3+ consecutive periods",
+      "evidence": "COGS burden 79.6% -> 95.3%; 15.7pp shift"
+    },
+    {
+      "id": "BS001",
+      "signal_type": "leverage_escalation",
+      "classification_hint": "structural",
+      "classification_reason": "Debt/EBITDA 14.4x exceeds sector structural threshold 12x for consecutive periods",
+      "evidence": "Debt/EBITDA 14.4x (current) vs sector threshold 12x"
+    },
+    {
+      "id": "BS006",
+      "signal_type": "fx_debt_exposure",
+      "classification_hint": "structural",
+      "classification_reason": "100% USD-denominated debt stack; persistent structural exposure not cycle-linked",
+      "evidence": "BRL 43.9B foreign bonds, 8 instruments, 100% USD"
+    },
+    {
+      "id": "CF001",
+      "signal_type": "earnings_quality_gap",
+      "classification_hint": "structural",
+      "classification_reason": "OCF/NI 0.38 for latest period; persistent gap across multiple periods",
+      "evidence": "Less than half of earnings converting to cash"
+    },
+    {
+      "id": "CF003",
+      "signal_type": "fcf_erosion",
+      "classification_hint": "structural",
+      "classification_reason": "6 consecutive periods of negative FCF; exceeds sector structural threshold of 4",
+      "evidence": "FCF negative for 6 consecutive periods"
+    }
+  ]
+}

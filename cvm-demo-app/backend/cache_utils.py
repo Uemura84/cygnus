@@ -33,9 +33,13 @@ def _resolve_dir(cache_dir: Path, company_name: str | None) -> Path:
     return cache_dir
 
 
-def load_cache(step_n: int, cache_dir: Path, company_name: str | None = None) -> dict | None:
-    """Return the cached result dict for step N, or None if not available."""
-    path = _resolve_dir(cache_dir, company_name) / f"step{step_n}.json"
+def load_cache(step_n: int, cache_dir: Path, company_name: str | None = None, suffix: str = "") -> dict | None:
+    """Return the cached result dict for step N, or None if not available.
+
+    suffix: optional string appended before .json (e.g. "_en", "_pt_br") for
+    language-keyed caches.
+    """
+    path = _resolve_dir(cache_dir, company_name) / f"step{step_n}{suffix}.json"
     if not path.exists():
         return None
     try:
@@ -48,10 +52,14 @@ def load_cache(step_n: int, cache_dir: Path, company_name: str | None = None) ->
         return None
 
 
-def save_cache(step_n: int, result: dict, cache_dir: Path, company_name: str | None = None) -> None:
-    """Persist a step result dict to cache. Silently ignores write errors."""
+def save_cache(step_n: int, result: dict, cache_dir: Path, company_name: str | None = None, suffix: str = "") -> None:
+    """Persist a step result dict to cache. Silently ignores write errors.
+
+    suffix: optional string appended before .json (e.g. "_en", "_pt_br") for
+    language-keyed caches.
+    """
     directory = _resolve_dir(cache_dir, company_name)
-    path = directory / f"step{step_n}.json"
+    path = directory / f"step{step_n}{suffix}.json"
     try:
         directory.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:

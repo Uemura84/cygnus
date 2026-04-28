@@ -98,13 +98,13 @@ export default function Step8Summary({ stepState, data }) {
             style={{
               padding: '10px 24px',
               borderRadius: '8px',
-              background: hasStep6Context ? 'var(--blue)' : 'rgba(11,31,58,0.06)',
+              background: hasStep6Context ? 'var(--teal)' : 'rgba(11,31,58,0.06)',
               color: hasStep6Context ? '#fff' : 'var(--gray)',
               border: 'none',
               cursor: hasStep6Context ? 'pointer' : 'not-allowed',
               fontWeight: 600,
               fontSize: '0.9rem',
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "'IBM Plex Sans', sans-serif",
             }}
           >
             {t.step8.run_button ?? 'Generate Summary'}
@@ -126,13 +126,13 @@ export default function Step8Summary({ stepState, data }) {
       {status !== 'idle' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '0.8rem' }}>
           {status === 'connecting' && (
-            <span style={{ color: '#EF9F27', fontFamily: "'JetBrains Mono', monospace" }}>⏳ {t.step8.running ?? 'Generating executive summary...'}</span>
+            <span style={{ color: '#EF9F27', fontFamily: "'IBM Plex Mono', monospace" }}>⏳ {t.step8.running ?? 'Generating executive summary...'}</span>
           )}
           {status === 'streaming' && (
-            <span style={{ color: 'var(--blue)', fontFamily: "'JetBrains Mono', monospace" }}>● {t.step8.running ?? 'Generating executive summary...'}</span>
+            <span style={{ color: 'var(--teal)', fontFamily: "'IBM Plex Mono', monospace" }}>● {t.step8.running ?? 'Generating executive summary...'}</span>
           )}
           {status === 'done' && (
-            <span style={{ color: 'var(--blue)', fontFamily: "'JetBrains Mono', monospace" }}>✓ Complete</span>
+            <span style={{ color: 'var(--teal)', fontFamily: "'IBM Plex Mono', monospace" }}>✓ Complete</span>
           )}
         </div>
       )}
@@ -152,7 +152,7 @@ export default function Step8Summary({ stepState, data }) {
             fontSize: '1rem',
             lineHeight: 1.8,
             color: 'var(--charcoal)',
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "'IBM Plex Sans', sans-serif",
           }}
         >
           <MarkdownView text={text || data?.data?.response_text || ''} />

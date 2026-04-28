@@ -5,17 +5,18 @@ import os
 from typing import AsyncIterator
 
 MOCK_RESPONSE = """\
-That's a great question. The 2022 COGS inflection reflects the confluence of two major external shocks:
-
-**1. Ukraine War Energy Spike (February 2022)**
-Brent crude surged above $100/bbl in February 2022 and remained elevated for most of H1 2022. Since Braskem's primary feedstock is naphtha (a crude oil derivative), the cost impact was direct and immediate. Unlike US cracker operators who use cheap shale ethane, Brazilian crackers have no affordable alternative feedstock, making them structurally exposed to crude oil price spikes.
-
-**2. Demand Destruction Without Cost Relief**
-The Fed's aggressive tightening cycle in H2 2022 (400bps of rate hikes) destroyed global polymer demand. This meant the company faced the worst of both worlds: high input costs AND declining selling prices. The revenue contraction visible in 2022 reflects this demand destruction, while COGS remained elevated because feedstock procurement cannot adjust quickly.
-
-The structural nature of the deterioration — COGS ratio remained high even as energy prices normalized in 2023-2024 — suggests additional factors (China overcapacity, BRL weakness) compounded the initial energy shock.
-
-**Key data that would confirm this:** Naphtha purchase price by quarter vs. PE/PP selling price by quarter — this would isolate the feedstock spread effect from other cost factors.
+{
+  "answer": "The 2022 COGS inflection reflects two simultaneous shocks: Brent crude surged above $100/bbl in February 2022, directly raising naphtha feedstock costs, while Fed tightening (400bps) destroyed global polymer demand. Unlike US ethane-based crackers, Braskem has no lower-cost feedstock alternative, so the cost impact was immediate and unhedgeable. When energy prices partially normalised in 2023–2024, COGS/Revenue did not recover — confirming structural damage beyond the energy cycle.",
+  "evidence": [
+    {"label": "COGS/Revenue at inflection", "value": "80.9% (2021) → 90.7% (2022)", "note": "Single-year jump of 9.8pp driven by naphtha cost spike"},
+    {"label": "Revenue change 2022", "value": "−8.6% YoY", "note": "Demand destruction compressing realisation prices"},
+    {"label": "COGS change 2022", "value": "+15.8% YoY", "note": "Feedstock cost rising while volumes fell — worst-case divergence"},
+    {"label": "EBIT margin 2022", "value": "6.5% (vs 34% in mid-2021)", "note": "27.8pp collapse in two quarters confirms structural, not cyclical, break"}
+  ],
+  "implications": "The persistence of elevated COGS/Revenue through 2023–2024 — despite energy price normalisation — points to Chinese PE/PP capacity additions as a secondary structural suppressor of selling prices. Without feedstock diversification or product-mix differentiation, the margin floor is set by global commodity spreads, not internal efficiency.",
+  "data_needed": "Naphtha purchase price per tonne by quarter vs. domestic polyethylene/polypropylene realisation price by quarter — this isolates the feedstock-spread effect from fixed-cost deleverage and would identify whether the 2023–2024 stagnation is cost-side or price-side.",
+  "follow_up": "What share of Braskem's COGS is fixed vs. variable, and at what revenue level does the fixed-cost structure tip EBIT back to breakeven?"
+}
 """
 
 
@@ -45,7 +46,23 @@ async def stream(payload: dict, config, pipeline_state: dict = None) -> AsyncIte
 
     lang_str = "Portuguese (Brazilian)" if language == "pt-br" else "English"
 
+    _ANSWER_SCHEMA = """\
+{
+  "answer": "<direct answer — 3-5 sentences, reference specific numbers, periods, and findings from the analysis>",
+  "evidence": [
+    {
+      "label": "<metric or finding name>",
+      "value": "<specific number or range>",
+      "note": "<one-line interpretation>"
+    }
+  ],
+  "implications": "<what this means for the company outlook — 2-3 sentences, forward-looking>",
+  "data_needed": "<specific internal data source that would confirm, refute, or extend this answer — 1-2 sentences>",
+  "follow_up": "<one natural follow-up question the analyst would ask next>"
+}"""
+
     system_prompt = (
+        "CRITICAL: Output ONLY valid JSON. No markdown fences, no preamble, no text outside the JSON.\n\n"
         "You are a senior industry specialist and financial analyst. You previously analyzed "
         "a Brazilian company's CVM financial data across three modules: profitability, "
         "balance sheet health, and cash flow quality — and synthesized cross-module diagnoses.\n\n"
@@ -57,10 +74,11 @@ async def stream(payload: dict, config, pipeline_state: dict = None) -> AsyncIte
         "- Leverage, liquidity, working capital, dividend sustainability, or cash generation\n"
         "- Comparisons with peers or industry benchmarks\n"
         "- Specific hypotheses and how to test them\n\n"
-        "Be concise and specific. Reference the actual numbers from the analysis when relevant. "
-        "If asked about something outside the scope of the financial analysis, acknowledge the "
-        "limitation and redirect to what the data shows.\n\n"
-        f"Write in {lang_str}."
+        "For every response, output ONLY this JSON object:\n"
+        f"{_ANSWER_SCHEMA}\n\n"
+        "Be specific — reference actual numbers from the analysis. "
+        "Include 2-4 evidence items. "
+        f"Write all text values in {lang_str}."
     )
 
     # Build base context from step 6 + step 7
@@ -80,15 +98,14 @@ async def stream(payload: dict, config, pipeline_state: dict = None) -> AsyncIte
 
     messages = base_context + list(conv_history) + [{"role": "user", "content": message}]
 
-    async with client.messages.stream(
+    resp = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1500,
         temperature=0.7,
         system=system_prompt,
         messages=messages,
-    ) as stream_obj:
-        async for text in stream_obj.text_stream:
-            yield text
+    )
+    yield resp.content[0].text
 
 
 def _build_step6_summary(step6_data: dict, company_name: str) -> str:
@@ -120,7 +137,7 @@ def _build_step6_summary(step6_data: dict, company_name: str) -> str:
         lines.append("")
         lines.append(f"{label}:")
         for f in module_findings:
-            desc = (f.get("description", "") or "")[:120]
+            desc = f.get("description", "") or ""
             lines.append(f"  - {f.get('id','')}: {f.get('pattern','')} ({f.get('severity','')}) — {desc}")
 
     return "\n".join(lines)

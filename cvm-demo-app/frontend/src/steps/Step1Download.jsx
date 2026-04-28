@@ -3,10 +3,19 @@ import RunStepButton from '../components/RunStepButton'
 import styles from './Step.module.css'
 
 const STMT_LABEL_KEYS = {
-  dre: 'stmt_dre',
-  bpa: 'stmt_bpa',
-  bpp: 'stmt_bpp',
-  dfc: 'stmt_dfc',
+  dre:     'stmt_dre',
+  bpa:     'stmt_bpa',
+  bpp:     'stmt_bpp',
+  dfc:     'stmt_dfc',
+  dva:     'stmt_dva',
+  dmpl:    'stmt_dmpl',
+  dra:     'stmt_dra',
+  parecer: 'stmt_parecer',
+}
+
+const FRE_LABEL_KEYS = {
+  auditor:          'fre_auditor',
+  titulo_exterior:  'fre_titulo_exterior',
 }
 
 export default function Step1Download({ stepState, data }) {
@@ -66,16 +75,49 @@ export default function Step1Download({ stepState, data }) {
                   <tbody>
                     {d.statements_found.map((row) => (
                       <tr key={row.type}>
-                        <td style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
+                        <td style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 500 }}>
                           {t.step1[STMT_LABEL_KEYS[row.type]] ?? row.type.toUpperCase()}
                         </td>
-                        <td style={{ textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.85rem' }}>
+                        <td style={{ textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem' }}>
                           {row.dfp_files}
                         </td>
-                        <td style={{ textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.85rem' }}>
+                        <td style={{ textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem' }}>
                           {row.itr_files}
                         </td>
-                        <td style={{ textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.85rem', fontWeight: 700, color: 'var(--navy)' }}>
+                        <td style={{ textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem', fontWeight: 700, color: 'var(--navy)' }}>
+                          {row.total_rows?.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* FRE Files table */}
+          {d.fre_statements_found?.length > 0 && (
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>{t.step1.fre_table_title}</h3>
+              <div style={{ overflowX: 'auto' }}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left' }}>{t.step1.fre_col_file}</th>
+                      <th style={{ textAlign: 'right' }}>{t.step1.fre_col_fre_files}</th>
+                      <th style={{ textAlign: 'right' }}>{t.step1.fre_col_total_rows}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.fre_statements_found.map((row) => (
+                      <tr key={row.type}>
+                        <td style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 500 }}>
+                          {t.step1[FRE_LABEL_KEYS[row.type]] ?? row.type}
+                        </td>
+                        <td style={{ textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem' }}>
+                          {row.fre_files}
+                        </td>
+                        <td style={{ textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.85rem', fontWeight: 700, color: 'var(--navy)' }}>
                           {row.total_rows?.toLocaleString()}
                         </td>
                       </tr>

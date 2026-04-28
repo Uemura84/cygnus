@@ -1,0 +1,87 @@
+{
+  "PETROCHEMICAL": {
+    "sector_id": "PETROCHEMICAL",
+    "display_name": "Petrochemicals (naphtha-based)",
+    "cycle_length_years": 4,
+    "plausibility_bounds": {
+      "gross_margin_pct":    { "min": -20, "max": 40 },
+      "ebit_margin_pct":     { "min": -40, "max": 25 },
+      "debt_to_ebitda":      { "min": -2,  "max": 25 },
+      "current_ratio":       { "min": 0.3, "max": 5  },
+      "cogs_to_revenue_pct": { "min": 60,  "max": 120 }
+    },
+    "distress_thresholds": {
+      "debt_to_ebitda_structural":       12,
+      "current_ratio_stress":            1.0,
+      "fcf_negative_streak_structural":  4
+    },
+    "signal_weights": {
+      "margin_compression":        5,
+      "cost_composition_drift":    8,
+      "leverage_escalation":       10,
+      "fcf_erosion":               8,
+      "capex_starvation":          5,
+      "fx_debt_exposure":          5,
+      "earnings_quality_gap":      5,
+      "lender_share_escalation":   5,
+      "shareholder_value_erosion": 5
+    }
+  },
+  "PULP": {
+    "sector_id": "PULP",
+    "display_name": "Pulp and paper (eucalyptus pulp producer)",
+    "cycle_length_years": 3,
+    "plausibility_bounds": {
+      "gross_margin_pct":    { "min": 10, "max": 70 },
+      "ebit_margin_pct":     { "min": -20, "max": 60 },
+      "debt_to_ebitda":      { "min": -2,  "max": 20 },
+      "current_ratio":       { "min": 0.3, "max": 8  },
+      "cogs_to_revenue_pct": { "min": 30,  "max": 90 }
+    },
+    "distress_thresholds": {
+      "debt_to_ebitda_structural":       6,
+      "current_ratio_stress":            1.0,
+      "fcf_negative_streak_structural":  3
+    },
+    "signal_weights": {
+      "margin_compression":        5,
+      "cost_composition_drift":    8,
+      "leverage_escalation":       10,
+      "fcf_erosion":               8,
+      "capex_starvation":          5,
+      "fx_debt_exposure":          5,
+      "earnings_quality_gap":      5,
+      "lender_share_escalation":   5,
+      "shareholder_value_erosion": 5
+    }
+  },
+  "DEFAULT": {
+    "sector_id": "DEFAULT",
+    "display_name": "Default / uncategorized",
+    "cycle_length_years": 3,
+    "_warning": "No sector match — using conservative default thresholds. Log warning in report data quality section.",
+    "plausibility_bounds": {
+      "gross_margin_pct":    { "min": 0,   "max": 60 },
+      "ebit_margin_pct":     { "min": -20, "max": 30 },
+      "debt_to_ebitda":      { "min": -2,  "max": 15 },
+      "current_ratio":       { "min": 0.5, "max": 5  },
+      "cogs_to_revenue_pct": { "min": 40,  "max": 100 }
+    },
+    "distress_thresholds": {
+      "debt_to_ebitda_structural":       5,
+      "current_ratio_stress":            1.0,
+      "fcf_negative_streak_structural":  3
+    },
+    "signal_weights": {
+      "margin_compression":        5,
+      "cost_composition_drift":    8,
+      "leverage_escalation":       10,
+      "fcf_erosion":               8,
+      "capex_starvation":          5,
+      "fx_debt_exposure":          5,
+      "earnings_quality_gap":      5,
+      "lender_share_escalation":   5,
+      "shareholder_value_erosion": 5
+    }
+  }
+}

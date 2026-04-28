@@ -7,6 +7,67 @@ import { useI18n, useAppState, useAppDispatch } from '../App'
 import MarkdownView from '../components/MarkdownView'
 import styles from './Step.module.css'
 
+// ── PDF Download button ───────────────────────────────────────────────────────
+
+function PdfDownloadButton({ t, companyName, lang }) {
+  const [loading, setLoading] = useState(false)
+
+  async function handleClick() {
+    if (loading) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/report/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company: companyName, lang }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const cd = res.headers.get('Content-Disposition') || ''
+      const match = cd.match(/filename="([^"]+)"/)
+      const filename = match ? match[1] : 'cygnus-report.pdf'
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('[PDF export]', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: '2px',
+        padding: '12px 18px',
+        borderRadius: '8px',
+        border: '1px solid var(--teal-line)',
+        background: loading ? 'var(--offwhite)' : 'transparent',
+        cursor: loading ? 'not-allowed' : 'pointer',
+        transition: 'background 0.15s, border-color 0.15s',
+      }}
+      onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.background = 'var(--teal-dim)'; e.currentTarget.style.borderColor = 'var(--teal)' } }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = loading ? 'var(--offwhite)' : 'transparent'; e.currentTarget.style.borderColor = 'var(--teal-line)' }}
+    >
+      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: loading ? 'var(--gray)' : 'var(--teal)', fontFamily: "'IBM Plex Sans', sans-serif" }}>
+        {loading ? t.download_pdf_loading : `↓  ${t.download_pdf_label}`}
+      </span>
+      <span style={{ fontSize: '0.68rem', color: 'var(--gray)', fontFamily: "'IBM Plex Sans', sans-serif" }}>
+        {t.download_pdf_sub}
+      </span>
+    </button>
+  )
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtBRL(v) {
@@ -63,7 +124,7 @@ function tryParseJSON(text) {
 
 function MetricCard({ label, value, sub, severity }) {
   const sev = severity ?? 'normal'
-  const colorMap = { critical: '#E24B4A', high: '#b45309', normal: 'var(--blue)' }
+  const colorMap = { critical: '#E24B4A', high: '#b45309', normal: 'var(--teal)' }
   const bgMap    = { critical: 'rgba(226,75,74,0.05)', high: 'rgba(239,159,39,0.05)', normal: '#fff' }
   const borderMap = { critical: 'rgba(226,75,74,0.18)', high: 'rgba(239,159,39,0.18)', normal: 'rgba(11,31,58,0.07)' }
   const c = colorMap[sev] ?? colorMap.normal
@@ -76,14 +137,14 @@ function MetricCard({ label, value, sub, severity }) {
       flex: 1,
       minWidth: '120px',
     }}>
-      <div style={{ fontSize: '0.6rem', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.11em', color: c, marginBottom: '6px' }}>
+      <div style={{ fontSize: '0.6rem', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.11em', color: c, marginBottom: '6px' }}>
         {label}
       </div>
-      <div style={{ fontSize: '1.25rem', fontWeight: 600, fontFamily: "'DM Sans', sans-serif", color: 'var(--charcoal)', lineHeight: 1.2 }}>
+      <div style={{ fontSize: '1.25rem', fontWeight: 600, fontFamily: "'IBM Plex Sans', sans-serif", color: 'var(--charcoal)', lineHeight: 1.2 }}>
         {value}
       </div>
       {sub && (
-        <div style={{ fontSize: '0.66rem', fontFamily: "'JetBrains Mono', monospace", color: c, marginTop: '4px', fontWeight: 500 }}>
+        <div style={{ fontSize: '0.66rem', fontFamily: "'IBM Plex Mono', monospace", color: c, marginTop: '4px', fontWeight: 500 }}>
           {sub}
         </div>
       )}
@@ -95,21 +156,25 @@ function MetricCalloutRow({ step4Data, step6Data, t }) {
   const riskScore = step6Data.risk_score ?? null
   const riskLevel = (step6Data.risk_level ?? '').toUpperCase()
 
-  const bsSeries  = step4Data.balance_sheet_series ?? []
-  const latestBS  = bsSeries.at(-1) ?? {}
+  // Use annual entries only to avoid quarterly/annual double-counting
+  const bsAnnual  = (step4Data.balance_sheet_series ?? []).filter(r => r.granularity === 'annual')
+  const latestBS  = bsAnnual.at(-1) ?? {}
   const equity    = latestBS.total_equity ?? null
   const debtEbitda = latestBS.debt_to_ebitda ?? null
   const equityNeg  = equity != null && equity < 0
   const debtHigh   = debtEbitda != null && debtEbitda > 4
 
-  const cfSeries = step4Data.cash_flow_series ?? []
+  const cfAnnual = (step4Data.cash_flow_series ?? []).filter(r => r.granularity === 'annual')
   let fcfStreak = 0
-  for (let i = cfSeries.length - 1; i >= 0; i--) {
-    if ((cfSeries[i].free_cash_flow ?? 0) < 0) fcfStreak++
+  for (let i = cfAnnual.length - 1; i >= 0; i--) {
+    if ((cfAnnual[i].free_cash_flow ?? 0) < 0) fcfStreak++
     else break
   }
 
   const riskSev = riskLevel === 'CRITICAL' ? 'critical' : riskLevel === 'HIGH' ? 'high' : 'normal'
+
+  const freMaturity  = step4Data.fre_debt_maturity ?? null
+  const nearTermPct  = freMaturity?.near_term_pct ?? null
 
   return (
     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
@@ -137,16 +202,52 @@ function MetricCalloutRow({ step4Data, step6Data, t }) {
         sub={fcfStreak > 0 ? t.metric_consecutive_negative : null}
         severity={fcfStreak >= 4 ? 'critical' : fcfStreak >= 2 ? 'high' : 'normal'}
       />
+      {nearTermPct != null && (
+        <MetricCard
+          label={t.metric_debt_maturity}
+          value={nearTermPct.toFixed(0) + '%'}
+          sub={t.metric_near_term_sub}
+          severity={nearTermPct >= 50 ? 'critical' : nearTermPct >= 30 ? 'high' : 'normal'}
+        />
+      )}
     </div>
   )
 }
 
-// ── Mini Margin Trajectory chart ──────────────────────────────────────────────
+// ── Mini chart driven by LLM-chosen metric ────────────────────────────────────
 
-function MiniMarginChart({ step4Data, t }) {
-  const data = (step4Data.time_series ?? [])
-    .filter(r => r.Gross_Margin_pct != null)
+const METRIC_LABELS = {
+  revenue_abs:      'Revenue',
+  cogs_abs:         'COGS',
+  gross_profit_abs: 'Gross Profit',
+  ebit_abs:         'EBIT',
+  ebitda_abs:       'EBITDA',
+}
+
+// Format BRL thousands → human-readable (B/M)
+function fmtBRLAxis(v) {
+  if (v == null) return ''
+  const b = v / 1_000_000  // thousands → billions
+  if (Math.abs(b) >= 1) return `R$${b.toFixed(1)}B`
+  const m = v / 1_000      // thousands → millions
+  return `R$${m.toFixed(0)}M`
+}
+
+function MiniMarginChart({ step4Data, featuredChart, t }) {
+  const primary   = featuredChart?.primary_metric   ?? 'revenue_abs'
+  const secondary = featuredChart?.secondary_metric ?? null
+  const title     = featuredChart?.chart_title      ?? t.chart_margin_mini ?? 'Financial Trajectory'
+  const reason    = featuredChart?.reason           ?? null
+
+  const data = (step4Data.time_series ?? []).filter(r => r[primary] != null)
   if (!data.length) return null
+
+  // Y-axis domain from actual data with 10% padding
+  const allVals = data.flatMap(r => [r[primary], secondary ? r[secondary] : null].filter(v => v != null))
+  const rawMin = Math.min(...allVals)
+  const rawMax = Math.max(...allVals)
+  const pad = (rawMax - rawMin) * 0.1
+  const domain = [rawMin - pad, rawMax + pad]
 
   return (
     <div style={{
@@ -156,26 +257,40 @@ function MiniMarginChart({ step4Data, t }) {
       padding: '12px 14px',
       marginTop: '12px',
     }}>
-      <div style={{ fontSize: '0.6rem', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.11em', color: 'var(--blue)', marginBottom: '8px' }}>
-        {t.chart_margin_mini ?? 'Margin Trajectory'}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div style={{ fontSize: '0.6rem', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.11em', color: 'var(--teal)' }}>
+          {title}
+        </div>
+        {reason && (
+          <div style={{ fontSize: '0.62rem', fontFamily: "'IBM Plex Sans', sans-serif", color: 'var(--gray)', fontStyle: 'italic', maxWidth: '55%', textAlign: 'right' }}>
+            {reason}
+          </div>
+        )}
       </div>
       <ResponsiveContainer width="100%" height={150}>
-        <LineChart data={data} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
+        <LineChart data={data} margin={{ top: 4, right: 12, bottom: 4, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,31,58,0.06)" />
-          <XAxis dataKey="period" tick={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }} />
-          <YAxis unit="%" tick={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }} width={32} domain={[-15, 40]} />
-          <Tooltip formatter={(v) => `${v?.toFixed(1)}%`} />
+          <XAxis dataKey="period" tick={{ fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" }} />
+          <YAxis
+            tickFormatter={fmtBRLAxis}
+            tick={{ fontSize: 9, fontFamily: "'IBM Plex Mono', monospace" }}
+            width={52}
+            domain={domain}
+          />
+          <Tooltip formatter={(v, name) => [fmtBRLAxis(v), METRIC_LABELS[name] ?? name]} />
           <ReferenceLine y={0} stroke="rgba(11,31,58,0.18)" strokeDasharray="4 2" strokeWidth={1} />
           <Line
-            type="monotone" dataKey="Gross_Margin_pct"
-            name={t.gross_margin_label ?? 'Gross Margin %'}
-            stroke="#1e90ff" strokeWidth={2} dot={{ r: 3 }}
+            type="monotone" dataKey={primary}
+            name={primary}
+            stroke="#2E86C1" strokeWidth={2} dot={{ r: 3 }}
           />
-          <Line
-            type="monotone" dataKey="EBIT_Margin_pct"
-            name={t.ebit_margin_label ?? 'EBIT Margin %'}
-            stroke="rgba(30,144,255,0.45)" strokeWidth={1.5} dot={{ r: 2 }}
-          />
+          {secondary && secondary !== primary && (
+            <Line
+              type="monotone" dataKey={secondary}
+              name={secondary}
+              stroke="rgba(46,134,193,0.45)" strokeWidth={1.5} dot={{ r: 2 }}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -196,7 +311,7 @@ function DiagnosisSummary({ step6Data, t }) {
       padding: '12px 16px',
       marginTop: '12px',
     }}>
-      <div style={{ fontSize: '0.6rem', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.11em', color: '#E24B4A', marginBottom: '10px' }}>
+      <div style={{ fontSize: '0.6rem', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.11em', color: '#E24B4A', marginBottom: '10px' }}>
         {t.cross_module_diagnosis_summary}
       </div>
       {diagnoses.map((dx, i) => (
@@ -228,7 +343,7 @@ function DataGapsList({ gaps, t }) {
       padding: '12px 16px',
       marginTop: '12px',
     }}>
-      <div style={{ fontSize: '0.6rem', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.11em', color: 'var(--blue)', marginBottom: '10px' }}>
+      <div style={{ fontSize: '0.6rem', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.11em', color: 'var(--teal)', marginBottom: '10px' }}>
         {t.internal_data_needed}
       </div>
       <ol style={{ margin: 0, paddingLeft: '18px' }}>
@@ -250,7 +365,7 @@ function Section({ header, narrative, italic = false, children }) {
       <h3 style={{
         fontSize: '1.15rem',
         fontWeight: 700,
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "'IBM Plex Sans', sans-serif",
         color: 'var(--navy)',
         margin: '0 0 10px 0',
         letterSpacing: '-0.01em',
@@ -259,7 +374,7 @@ function Section({ header, narrative, italic = false, children }) {
       </h3>
       {narrative && (
         <p style={{
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: "'IBM Plex Sans', sans-serif",
           fontWeight: 400,
           fontStyle: italic ? 'italic' : 'normal',
           fontSize: '0.9rem',
@@ -292,12 +407,12 @@ function KeyFindingsTable({ findings, t }) {
       <tbody>
         {findings.map((f, i) => (
           <tr key={i}>
-            <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+            <td style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
               {f.module}
             </td>
-            <td style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 400 }}>{f.finding}</td>
+            <td style={{ fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 400 }}>{f.finding}</td>
             <td><span className={severityClass(f.severity)}>{f.severity}</span></td>
-            <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.78rem' }}>{f.evidence}</td>
+            <td style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.78rem' }}>{f.evidence}</td>
           </tr>
         ))}
       </tbody>
@@ -308,6 +423,7 @@ function KeyFindingsTable({ findings, t }) {
 // ── Structured briefing ───────────────────────────────────────────────────────
 
 function StructuredBriefing({ parsed, step4Data, step6Data, t }) {
+  const featuredChart = parsed.featured_chart ?? null
   return (
     <div>
       {/* Opening: metric callout cards + executive summary sentence */}
@@ -318,13 +434,13 @@ function StructuredBriefing({ parsed, step4Data, step6Data, t }) {
         padding: '18px 20px',
         marginBottom: '28px',
       }}>
-        <div style={{ fontSize: '0.6rem', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.11em', color: 'var(--blue)', marginBottom: '14px' }}>
+        <div style={{ fontSize: '0.6rem', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.11em', color: 'var(--teal)', marginBottom: '14px' }}>
           {t.h_executive_summary}
         </div>
         <MetricCalloutRow step4Data={step4Data} step6Data={step6Data} t={t} />
         {parsed.executive_summary && (
           <p style={{
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "'IBM Plex Sans', sans-serif",
             fontWeight: 400,
             fontSize: '0.9rem',
             lineHeight: 1.8,
@@ -334,12 +450,11 @@ function StructuredBriefing({ parsed, step4Data, step6Data, t }) {
             {parsed.executive_summary}
           </p>
         )}
+        <MiniMarginChart step4Data={step4Data} featuredChart={featuredChart} t={t} />
       </div>
 
-      {/* What Happened + mini chart */}
-      <Section header={t.h_what_happened} narrative={parsed.what_happened}>
-        <MiniMarginChart step4Data={step4Data} t={t} />
-      </Section>
+      {/* What Happened */}
+      <Section header={t.h_what_happened} narrative={parsed.what_happened} />
 
       {/* How Serious + diagnosis summary */}
       <Section header={t.h_how_serious} narrative={parsed.how_serious}>
@@ -383,6 +498,7 @@ export default function Step8Reporting({ stepState, data }) {
 
   const [parsedData, setParsedData] = useState(null)
   const [rawText,    setRawText]    = useState('')
+  const [sections,   setSections]   = useState({})
   const [parseError, setParseError] = useState(false)
   const [status,     setStatus]     = useState('idle') // idle | connecting | streaming | parsing | done | error
   const [payload,    setPayload]    = useState(null)
@@ -392,8 +508,16 @@ export default function Step8Reporting({ stepState, data }) {
   const step6Data = appState.stepData[6]?.data ?? {}
   const step7Data = appState.stepData[7]?.data ?? {}
 
-  const isStreaming     = status === 'connecting' || status === 'streaming'
-  const hasFindingsCtx  = !!step6Data.findings?.length
+  const isStreaming    = status === 'connecting' || status === 'streaming'
+  const hasFindingsCtx = !!step6Data.findings?.length
+
+  // Partial parsed object assembled from sections during streaming
+  const partialParsed = isStreaming && Object.keys(sections).length > 0 ? {
+    ...sections.diagnosis,
+    ...sections.timeline,
+    ...sections.severity,
+    ...sections.gaps,
+  } : null
 
   // Start WebSocket when payload is set
   useEffect(() => {
@@ -401,13 +525,15 @@ export default function Step8Reporting({ stepState, data }) {
 
     setParsedData(null)
     setRawText('')
+    setSections({})
     setParseError(false)
     setStatus('connecting')
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
     const ws = new WebSocket(`${protocol}://${window.location.host}/ws/llm`)
     wsRef.current = ws
-    let accumulated = ''
+
+    const sectionsAccum = {}
 
     ws.onopen = () => {
       setStatus('streaming')
@@ -416,23 +542,22 @@ export default function Step8Reporting({ stepState, data }) {
 
     ws.onmessage = (e) => {
       if (e.data === '[DONE]') {
-        setStatus('parsing')
         ws.close()
-        const parsed = tryParseJSON(accumulated)
-        if (parsed) {
-          setParsedData(parsed)
-          setParseError(false)
-        } else {
-          setRawText(accumulated)
-          setParseError(true)
+        const assembled = {
+          ...sectionsAccum.diagnosis,
+          ...sectionsAccum.timeline,
+          ...sectionsAccum.severity,
+          ...sectionsAccum.gaps,
         }
+        setParsedData(assembled)
+        setParseError(false)
         setStatus('done')
         dispatch({
           type: 'SET_STEP_COMPLETE',
           step: 8,
           data: {
             status: 'complete',
-            data: { response_text: accumulated, status: 'complete' },
+            data: { response_text: JSON.stringify(assembled), status: 'complete' },
             metadata: { source: 'websocket' },
           },
         })
@@ -443,7 +568,13 @@ export default function Step8Reporting({ stepState, data }) {
         ws.close()
         return
       }
-      accumulated += e.data
+      try {
+        const msg = JSON.parse(e.data)
+        if (msg.__section && msg.data) {
+          sectionsAccum[msg.__section] = msg.data
+          setSections({ ...sectionsAccum })
+        }
+      } catch (_) {}
     }
 
     ws.onerror = () => setStatus('error')
@@ -469,15 +600,19 @@ export default function Step8Reporting({ stepState, data }) {
     if (!hasFindingsCtx) return
     setPayload({
       step: 8,
-      step6_data:     step6Data,
-      step7_response: step7Data.response_text ?? '',
-      company_name:   appState.companyName ?? 'BRASKEM S.A.',
-      language:       appState.language ?? 'en',
+      step6_data:          step6Data,
+      step7_response:      step7Data.response_text ?? '',
+      company_name:        appState.companyName ?? 'BRASKEM S.A.',
+      language:            appState.language ?? 'en',
+      fre_available:       step4Data?.fre_debt_maturity != null,
+      fre_debt_maturity:   step4Data?.fre_debt_maturity ?? null,
+      fre_debt_currency:   step4Data?.fre_debt_currency ?? null,
     })
   }
 
   const showRunButton = status === 'idle' || status === 'error'
-  const showResults   = status === 'done'
+  const showResults   = status === 'done' || (isStreaming && partialParsed !== null)
+  const displayData   = parsedData ?? partialParsed
 
   // Merge i18n t4 keys needed for chart labels into t
   const tMerged = {
@@ -501,13 +636,13 @@ export default function Step8Reporting({ stepState, data }) {
             style={{
               padding: '10px 24px',
               borderRadius: '8px',
-              background: hasFindingsCtx ? 'var(--blue)' : 'rgba(11,31,58,0.06)',
+              background: hasFindingsCtx ? 'var(--teal)' : 'rgba(11,31,58,0.06)',
               color: hasFindingsCtx ? '#fff' : 'var(--gray)',
               border: 'none',
               cursor: hasFindingsCtx ? 'pointer' : 'not-allowed',
               fontWeight: 600,
               fontSize: '0.9rem',
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "'IBM Plex Sans', sans-serif",
             }}
           >
             {t.run_button}
@@ -530,8 +665,8 @@ export default function Step8Reporting({ stepState, data }) {
         <div style={{
           marginBottom: '20px',
           padding: '12px 16px',
-          background: 'rgba(30,144,255,0.04)',
-          border: '1px solid rgba(30,144,255,0.12)',
+          background: 'rgba(14,143,154,0.04)',
+          border: '1px solid rgba(14,143,154,0.12)',
           borderRadius: '6px',
         }}>
           <div className={styles.running} style={{ fontSize: '0.82rem' }}>
@@ -540,20 +675,27 @@ export default function Step8Reporting({ stepState, data }) {
         </div>
       )}
 
-      {/* Done row */}
+      {/* Done row + PDF download button */}
       {status === 'done' && !showRunButton && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '0.78rem' }}>
-          <span style={{ color: 'var(--blue)', fontFamily: "'JetBrains Mono', monospace" }}>✓ Complete</span>
-          {parseError && (
-            <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>— {t.fallback_note}</span>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem' }}>
+            <span style={{ color: 'var(--teal)', fontFamily: "'IBM Plex Mono', monospace" }}>✓ Complete</span>
+            {parseError && (
+              <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>— {t.fallback_note}</span>
+            )}
+          </div>
+          <PdfDownloadButton
+            t={t}
+            companyName={appState.companyName ?? 'BRASKEM S.A.'}
+            lang={appState.language ?? 'en'}
+          />
         </div>
       )}
 
       {/* Results */}
       {showResults && (
-        parsedData
-          ? <StructuredBriefing parsed={parsedData} step4Data={step4Data} step6Data={step6Data} t={tMerged} />
+        displayData
+          ? <StructuredBriefing parsed={displayData} step4Data={step4Data} step6Data={step6Data} t={tMerged} />
           : (
             <div style={{
               background: 'var(--offwhite)',

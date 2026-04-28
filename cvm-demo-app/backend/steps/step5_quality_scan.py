@@ -9,6 +9,8 @@ import pandas as pd
 from config import DATA_DIR, CACHE_DIR, YEARS
 from cache_utils import load_cache, save_cache, _resolve_dir
 from pipeline import pattern_detector, metrics_calculator
+from pipeline.parecer_classifier import parse_parecer, classify_parecer
+from pipeline.fre_parser import parse_fre_foreign_bonds, parse_fre_auditor
 
 logger = logging.getLogger(__name__)
 
@@ -575,6 +577,343 @@ def _cross_statement_validations(company_name: str) -> list:
     return warnings
 
 
+def _dva_dmpl_dra_validations(step4_data: dict) -> list:
+    """Run 3 cross-statement consistency checks using DVA/DMPL/DRA series from Step 4.
+
+    Returns list of warning dicts in the same shape as _cross_statement_validations().
+    """
+    warnings: list = []
+
+    dva_series  = step4_data.get("dva_series",  [])
+    dmpl_series = step4_data.get("dmpl_series", [])
+    dra_series  = step4_data.get("dra_series",  [])
+    ts_series   = step4_data.get("time_series", [])
+    bs_series   = step4_data.get("balance_sheet_series", [])
+
+    # Build period lookups from existing series
+    # time_series: period → revenue_abs, and net income from DRE
+    ts_lookup: dict = {}
+    for r in ts_series:
+        key = str(r.get("period", ""))[:4]
+        ts_lookup[key] = r
+
+    bs_annual_lookup: dict = {}
+    for r in bs_series:
+        if r.get("granularity") == "annual":
+            key = str(r.get("period", ""))[:4]
+            bs_annual_lookup[key] = r
+
+    # ── Validation 1: DVA revenues (7.01) vs DRE net revenue (1% tolerance) ──
+    for dva_rec in dva_series:
+        period = str(dva_rec.get("period", ""))[:4]
+        dva_rev = dva_rec.get("revenues")
+        ts_rev  = (ts_lookup.get(period) or {}).get("revenue_abs")
+        if dva_rev is None or ts_rev is None or ts_rev == 0:
+            continue
+        gap_pct = abs(dva_rev - ts_rev) / abs(ts_rev) * 100
+        if gap_pct > 1.0:
+            warnings.append({
+                "type":     "cross_statement",
+                "check":    "dva_vs_dre_revenue",
+                "severity": "MEDIUM",
+                "period":   period,
+                "message":  (
+                    f"DVA revenues ({dva_rev:,.0f}) vs DRE revenue ({ts_rev:,.0f}); "
+                    f"gap {gap_pct:.1f}%"
+                ),
+                "gap_pct": round(gap_pct, 2),
+            })
+
+    # ── Validation 2: DMPL closing equity vs BPP total equity (exact match) ──
+    for dmpl_rec in dmpl_series:
+        period = str(dmpl_rec.get("period", ""))[:4]
+        dmpl_eq = dmpl_rec.get("closing_equity")
+        bs_eq   = (bs_annual_lookup.get(period) or {}).get("total_equity")
+        if dmpl_eq is None or bs_eq is None or bs_eq == 0:
+            continue
+        gap_pct = abs(dmpl_eq - bs_eq) / abs(bs_eq) * 100
+        if gap_pct > 0.01:  # 0.01% — essentially exact, allowing floating-point rounding
+            warnings.append({
+                "type":     "cross_statement",
+                "check":    "dmpl_vs_bpp_equity",
+                "severity": "HIGH" if gap_pct > 1.0 else "MEDIUM",
+                "period":   period,
+                "message":  (
+                    f"DMPL closing equity ({dmpl_eq:,.0f}) vs BPP total equity ({bs_eq:,.0f}); "
+                    f"gap {gap_pct:.2f}%"
+                ),
+                "gap_pct": round(gap_pct, 4),
+            })
+
+    # ── Validation 3: DRA net income vs DRE net income (exact) ──
+    # Also note if OCI is material (>20% of net income) as informational
+    for dra_rec in dra_series:
+        period = str(dra_rec.get("period", ""))[:4]
+        dra_ni  = dra_rec.get("net_income")
+        dre_ni  = None
+        # DRE net income in time_series: not directly stored, but DRA was derived from same source
+        # Use DMPL net income as proxy if DRE NI not in ts_lookup
+        # time_series doesn't store net_income directly — skip NI check if unavailable
+
+        # OCI materiality note (informational)
+        oci_pct = dra_rec.get("oci_pct_net_income")
+        if oci_pct is not None and abs(oci_pct) > 20:
+            warnings.append({
+                "type":     "cross_statement",
+                "check":    "dra_oci_materiality",
+                "severity": "LOW",
+                "period":   period,
+                "message":  (
+                    f"OCI is {oci_pct:.1f}% of net income — comprehensive income "
+                    f"diverges materially from reported net income"
+                ),
+                "oci_pct_net_income": round(oci_pct, 2),
+            })
+
+        # Compare DRA net income vs DMPL net income (both from CVM — should be identical)
+        dmpl_ni = None
+        for dmpl_rec in dmpl_series:
+            if str(dmpl_rec.get("period", ""))[:4] == period:
+                dmpl_ni = dmpl_rec.get("net_income")
+                break
+
+        if dra_ni is not None and dmpl_ni is not None and dmpl_ni != 0:
+            gap_pct = abs(dra_ni - dmpl_ni) / abs(dmpl_ni) * 100
+            if gap_pct > 0.01:
+                warnings.append({
+                    "type":     "cross_statement",
+                    "check":    "dra_vs_dmpl_net_income",
+                    "severity": "HIGH" if gap_pct > 1.0 else "MEDIUM",
+                    "period":   period,
+                    "message":  (
+                        f"DRA net income ({dra_ni:,.0f}) vs DMPL net income ({dmpl_ni:,.0f}); "
+                        f"gap {gap_pct:.2f}%"
+                    ),
+                    "gap_pct": round(gap_pct, 4),
+                })
+
+    return warnings
+
+
+def _build_auditor_assessment(company_name: str, cache_dir, api_key: str, language: str = "en") -> dict:
+    """Parse and classify Parecer reports for the auditor assessment section.
+
+    Returns a dict suitable for Step 5 result data["auditor_assessment"].
+    """
+    try:
+        reports = parse_parecer(DATA_DIR, company_name, YEARS)
+        if not reports:
+            return {
+                "available": False,
+                "opinions": [],
+                "going_concern_detected": False,
+                "going_concern_count": 0,
+                "total_reports": 0,
+            }
+
+        classifications = classify_parecer(reports, company_name, cache_dir, api_key, language)
+
+        # Build FRE auditor lookup (year → firm_name) for authoritative firm names
+        fre_firm_by_year: dict[str, str] = {}
+        try:
+            fre_profiles = parse_fre_auditor(DATA_DIR, company_name, YEARS)
+            for p in fre_profiles:
+                yr = str(p.get("period", ""))[:4]
+                if yr and p.get("firm_name") and p["firm_name"] != "Unknown":
+                    fre_firm_by_year[yr] = p["firm_name"]
+        except Exception:
+            pass
+
+        # Build opinion rows for display
+        opinions = []
+        for c in classifications:
+            year = str(c.get("period", ""))[:4]
+            llm_firm   = c.get("auditor_firm", "") or ""
+            # Use FRE firm name when available — more reliable than LLM extraction from parecer text
+            fre_firm   = fre_firm_by_year.get(year)
+            auditor_firm = fre_firm or llm_firm or "Unknown"
+
+            # When FRE overrides the LLM-extracted name, also patch the summary text
+            # so it doesn't contradict the authoritative firm name.
+            summary = c.get("opinion_summary", "")
+            if fre_firm and llm_firm and fre_firm != llm_firm:
+                if llm_firm in summary:
+                    summary = summary.replace(llm_firm, fre_firm)
+                else:
+                    # LLM often uses a short brand name in prose (e.g. "Grant Thornton")
+                    # even though auditor_firm has the full legal name. Try first two
+                    # words of llm_firm as the search term; replace with full fre_firm.
+                    llm_brand = " ".join(llm_firm.split()[:2])
+                    if llm_brand and llm_brand in summary:
+                        summary = summary.replace(llm_brand, fre_firm)
+
+            opinions.append({
+                "period": c.get("period", ""),
+                "year": year,
+                "auditor_firm": auditor_firm,
+                "opinion_type": c.get("opinion_type", "unknown"),
+                "has_going_concern": c.get("has_going_concern", False),
+                "has_emphasis_of_matter": c.get("has_emphasis_of_matter", False),
+                "emphasis_topics": c.get("emphasis_topics", []),
+                "key_audit_matters": c.get("key_audit_matters", []),
+                "opinion_summary": summary,
+                "classification_error": c.get("classification_error", False),
+            })
+
+        gc_opinions = [o for o in opinions if o["has_going_concern"]]
+        gc_periods  = [o["year"] for o in gc_opinions]
+
+        return {
+            "available": True,
+            "opinions": opinions,
+            "going_concern_detected": len(gc_opinions) > 0,
+            "going_concern_count": len(gc_opinions),
+            "going_concern_periods": gc_periods,
+            "total_reports": len(opinions),
+        }
+    except Exception as exc:
+        logger.warning("_build_auditor_assessment: failed for %s: %s", company_name, exc)
+        return {
+            "available": False,
+            "opinions": [],
+            "going_concern_detected": False,
+            "going_concern_count": 0,
+            "total_reports": 0,
+            "error": str(exc),
+        }
+
+
+def _fre_validations(company_name: str, bs_series: list) -> tuple[list, dict | None]:
+    """Run FRE data quality checks.
+
+    Returns (warnings, debt_comparison) where:
+      warnings        — list of warning dicts for issues found
+      debt_comparison — always-present dict comparing FRE bonds to BS total debt,
+                        or None when either data source is missing.
+
+    Checks:
+    1. FRE foreign bonds total vs. BS total debt — FRE must not exceed BS
+       (would indicate a units mismatch or data error). Warns at > 10% excess.
+    2. Individual bond amounts must be positive.
+    3. Count of unparseable maturity dates.
+    4. Auditor fees must be non-negative.
+    """
+    warnings = []
+    debt_comparison = None
+
+    # ── Load FRE data ──────────────────────────────────────────────────────────
+    try:
+        bonds = parse_fre_foreign_bonds(DATA_DIR, company_name, YEARS)
+    except Exception:
+        bonds = []
+    try:
+        auditor_profiles = parse_fre_auditor(DATA_DIR, company_name, YEARS)
+    except Exception:
+        auditor_profiles = []
+
+    if not bonds and not auditor_profiles:
+        return warnings, debt_comparison  # FRE data not available for this company
+
+    # ── Check 1: FRE bonds total vs. BS total debt ─────────────────────────────
+    if bonds:
+        fre_total = sum(b.get("outstanding_amount") or 0.0 for b in bonds)
+        period    = bonds[0].get("period", "")[:4]
+
+        # Get BS total debt for the closest annual period
+        bs_annual = [r for r in bs_series if r.get("granularity") == "annual"]
+        bs_total  = None
+        bs_period = None
+        if bs_annual:
+            latest    = sorted(bs_annual, key=lambda r: r.get("period", ""))[-1]
+            bs_period = str(latest.get("period", ""))[:4]
+            std = latest.get("short_term_debt") or 0.0
+            ltd = latest.get("long_term_debt")  or 0.0
+            if std or ltd:
+                bs_total = abs(std) + abs(ltd)
+
+        if bs_total and bs_total > 0:
+            diff     = fre_total - bs_total
+            diff_pct = round(diff / bs_total * 100, 1)
+            # Always expose the comparison for display
+            debt_comparison = {
+                "fre_total_brl_k": round(fre_total),
+                "bs_total_brl_k":  round(bs_total),
+                "diff_brl_k":      round(diff),
+                "diff_pct":        diff_pct,
+                "fre_period":      period,
+                "bs_period":       bs_period,
+            }
+            # Only warn when FRE exceeds BS by > 10% (likely unit mismatch)
+            if fre_total > bs_total * 1.1:
+                warnings.append({
+                    "type":     "fre_cross_check",
+                    "check":    "fre_bonds_vs_bs_total_debt",
+                    "severity": "HIGH",
+                    "period":   period,
+                    "message":  (
+                        f"FRE foreign bonds ({fre_total:,.0f} BRL k) exceed "
+                        f"BS total debt ({bs_total:,.0f} BRL k) by {diff_pct}% — "
+                        f"possible unit mismatch in FRE data."
+                    ),
+                    "fre_total_brl_k": round(fre_total),
+                    "bs_total_brl_k":  round(bs_total),
+                    "gap_pct":         diff_pct,
+                })
+
+    # ── Check 2: Bond amounts must be positive ─────────────────────────────────
+    negative_bonds = [b for b in bonds if (b.get("outstanding_amount") or 0.0) <= 0]
+    if negative_bonds:
+        warnings.append({
+            "type":     "fre_validation",
+            "check":    "bond_amount_positive",
+            "severity": "MEDIUM",
+            "period":   bonds[0].get("period", "")[:4] if bonds else "",
+            "message":  (
+                f"{len(negative_bonds)} FRE bond obligation(s) have "
+                f"non-positive outstanding amounts — possible data errors."
+            ),
+            "affected_count": len(negative_bonds),
+        })
+
+    # ── Check 3: Count unparseable maturity dates ──────────────────────────────
+    undetermined = [b for b in bonds if b.get("maturity_date") == "Indeterminado"]
+    if undetermined:
+        warnings.append({
+            "type":     "fre_validation",
+            "check":    "maturity_date_parseable",
+            "severity": "LOW",
+            "period":   bonds[0].get("period", "")[:4] if bonds else "",
+            "message":  (
+                f"{len(undetermined)} of {len(bonds)} FRE bond obligation(s) "
+                f"have undetermined maturity dates — bucketed as 'Undetermined' "
+                f"in maturity analysis."
+            ),
+            "undetermined_count": len(undetermined),
+            "total_bonds":        len(bonds),
+        })
+
+    # ── Check 4: Auditor fees must be non-negative ─────────────────────────────
+    for profile in auditor_profiles:
+        period = profile.get("period", "")[:4]
+        for fee_field in ("audit_fees", "non_audit_fees"):
+            val = profile.get(fee_field) or 0.0
+            if val < 0:
+                warnings.append({
+                    "type":     "fre_validation",
+                    "check":    "auditor_fee_non_negative",
+                    "severity": "MEDIUM",
+                    "period":   period,
+                    "message":  (
+                        f"FRE auditor {fee_field} is negative ({val:,.0f} BRL k) "
+                        f"for period {period} — data error."
+                    ),
+                    "fee_field": fee_field,
+                    "value":     val,
+                })
+
+    return warnings, debt_comparison
+
+
 def run(config, pipeline_state: dict) -> dict:
     """Validate metric ranges and assign row-level confidence.
 
@@ -582,9 +921,11 @@ def run(config, pipeline_state: dict) -> dict:
     for use by Steps 6-8.
     """
     STEP = 5
+    lang        = getattr(config, "language", "en")
+    lang_suffix = "_" + lang.replace("-", "_")   # "en" → "_en", "pt-br" → "_pt_br"
 
     if config.cache_mode:
-        cached = load_cache(STEP, CACHE_DIR, company_name=config.company_name)
+        cached = load_cache(STEP, CACHE_DIR, company_name=config.company_name, suffix=lang_suffix)
         if cached:
             return cached
 
@@ -613,11 +954,20 @@ def run(config, pipeline_state: dict) -> dict:
             logger.info("Step5: pipeline_state missing step4 — loading from cache")
             cached4    = load_cache(4, CACHE_DIR, company_name=config.company_name)
             step4_data = (cached4 or {}).get("data", {})
+
+        # DVA/DMPL/DRA cross-statement validations (uses step4 series)
+        dva_dmpl_dra_warnings = _dva_dmpl_dra_validations(step4_data)
+        cross_warnings.extend(dva_dmpl_dra_warnings)
+        logger.info("Step5: dva_dmpl_dra_validations → %d warnings", len(dva_dmpl_dra_warnings))
         bs_series    = step4_data.get("balance_sheet_series", [])
         cf_series    = step4_data.get("cash_flow_series", [])
         ts_series    = step4_data.get("time_series", [])
         logger.info("Step5: step4 data → bs_series=%d cf_series=%d ts_series=%d",
                     len(bs_series), len(cf_series), len(ts_series))
+        # FRE cross-checks (bonds vs BS debt, amount/date/fee validation) — kept separate
+        fre_consistency_checks, fre_debt_comparison = _fre_validations(config.company_name, bs_series)
+        logger.info("Step5: fre_validations → %d warnings", len(fre_consistency_checks))
+
         bs_plausibility = _bs_plausibility_checks(bs_series)
         cf_plausibility = _cf_plausibility_checks(cf_series, ts_series)
         logger.info("Step5: bs_plausibility → total=%s flagged=%s", bs_plausibility.get("total_data_points"), bs_plausibility.get("flagged"))
@@ -630,24 +980,37 @@ def run(config, pipeline_state: dict) -> dict:
             if plausibility_bounds.get("source") == "llm":
                 _save_bounds_cache(plausibility_bounds, CACHE_DIR, config.company_name)
 
+        # Auditor assessment (Parecer classification)
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        auditor_assessment = _build_auditor_assessment(config.company_name, CACHE_DIR, api_key, lang)
+        logger.info(
+            "Step5: auditor_assessment → available=%s gc=%s reports=%d",
+            auditor_assessment.get("available"),
+            auditor_assessment.get("going_concern_detected"),
+            auditor_assessment.get("total_reports", 0),
+        )
+
         result = {
             "status": "complete",
             "data": {
                 **quality,
                 "cross_statement_warnings": cross_warnings,
+                "fre_consistency_checks":   fre_consistency_checks,
+                "fre_debt_comparison":      fre_debt_comparison,
                 "bs_plausibility":          bs_plausibility,
                 "cf_plausibility":          cf_plausibility,
                 "plausibility_bounds":      plausibility_bounds,
+                "auditor_assessment":       auditor_assessment,
                 "source": "live",
             },
             "metadata": {"cache_used": False, "source": "live"},
         }
-        save_cache(STEP, result, CACHE_DIR, company_name=config.company_name)
+        save_cache(STEP, result, CACHE_DIR, company_name=config.company_name, suffix=lang_suffix)
         return result
 
     except Exception as exc:
         logger.error("Step5: exception in run() — %s: %s", type(exc).__name__, exc, exc_info=True)
-        cached = load_cache(STEP, CACHE_DIR, company_name=config.company_name)
+        cached = load_cache(STEP, CACHE_DIR, company_name=config.company_name, suffix=lang_suffix)
         if cached:
             cached["metadata"]["source"] = "cache"
             cached["metadata"]["reason"] = str(exc)

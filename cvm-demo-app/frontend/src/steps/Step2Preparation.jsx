@@ -99,7 +99,7 @@ export default function Step2Preparation({ stepState, data }) {
 
 /**
  * Renders the company selection note above the funnel.
- * Bolds the company name; rest is DM Sans 400 slate 13px.
+ * Bolds the company name; rest is IBM Plex Sans 400 slate 13px.
  * Template format: "Selected {company} from {count} listed companies..."
  */
 function CompanyNote({ template, company, count }) {
@@ -111,7 +111,7 @@ function CompanyNote({ template, company, count }) {
 
   return (
     <div style={{
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: "'IBM Plex Sans', sans-serif",
       fontSize: '13px',
       fontWeight: 400,
       color: 'var(--gray)',
@@ -139,17 +139,17 @@ function FilterCard({ title, desc, subdesc, before, after, breakdown, t }) {
       padding: '14px 16px',
     }}>
       <div style={{
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "'IBM Plex Sans', sans-serif",
         fontSize: '0.85rem',
         fontWeight: 600,
         color: 'var(--navy)',
         marginBottom: '4px',
       }}>{title}</div>
-      <div style={{ fontSize: '0.78rem', color: 'var(--gray)', fontFamily: "'DM Sans', sans-serif", marginBottom: '2px' }}>
+      <div style={{ fontSize: '0.78rem', color: 'var(--gray)', fontFamily: "'IBM Plex Sans', sans-serif", marginBottom: '2px' }}>
         {desc}
       </div>
       {subdesc && (
-        <div style={{ fontSize: '0.78rem', color: 'var(--gray)', fontFamily: "'DM Sans', sans-serif", marginBottom: '8px' }}>
+        <div style={{ fontSize: '0.78rem', color: 'var(--gray)', fontFamily: "'IBM Plex Sans', sans-serif", marginBottom: '8px' }}>
           {subdesc}
         </div>
       )}
@@ -162,7 +162,7 @@ function FilterCard({ title, desc, subdesc, before, after, breakdown, t }) {
             <span style={{ color: 'rgba(11,31,58,0.3)', fontSize: '0.78rem' }}>→</span>
             <BeforeAfter label={t.step2.after_label} value={after} highlight />
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'IBM Plex Mono', monospace",
               fontSize: '0.75rem',
               color: 'var(--gray)',
               marginLeft: 'auto',
@@ -173,7 +173,7 @@ function FilterCard({ title, desc, subdesc, before, after, breakdown, t }) {
           {breakdown && (
             <div style={{
               marginTop: '8px',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'IBM Plex Mono', monospace",
               fontSize: '0.69rem',
               color: 'var(--gray)',
               lineHeight: 1.6,
@@ -209,15 +209,15 @@ function BeforeAfter({ label, value, highlight }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
       <span style={{
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: "'IBM Plex Mono', monospace",
         fontSize: '0.65rem',
         fontWeight: 700,
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
-        color: 'var(--blue)',
+        color: 'var(--teal)',
       }}>{label}</span>
       <span style={{
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: "'IBM Plex Mono', monospace",
         fontSize: '0.9rem',
         fontWeight: 700,
         color: highlight ? 'var(--navy)' : 'var(--gray)',
@@ -235,20 +235,20 @@ function YtdCard({ t }) {
       padding: '14px 16px',
     }}>
       <div style={{
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "'IBM Plex Sans', sans-serif",
         fontSize: '0.85rem',
         fontWeight: 600,
         color: 'var(--navy)',
         marginBottom: '4px',
       }}>{t.step2.ytd_conversion_title}</div>
-      <div style={{ fontSize: '0.78rem', color: 'var(--gray)', fontFamily: "'DM Sans', sans-serif", marginBottom: '10px' }}>
+      <div style={{ fontSize: '0.78rem', color: 'var(--gray)', fontFamily: "'IBM Plex Sans', sans-serif", marginBottom: '10px' }}>
         {t.step2.ytd_conversion_desc}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <TagRow label={t.step2.applied_to}     tags={['DRE', 'DFC']} color="var(--blue)" bg="rgba(30,144,255,0.08)" />
+        <TagRow label={t.step2.applied_to}     tags={['DRE', 'DFC']} color="var(--teal)" bg="rgba(14,143,154,0.08)" />
         <TagRow label={t.step2.not_applied_to} tags={['BPA', 'BPP']} color="var(--gray)" bg="rgba(11,31,58,0.06)" />
       </div>
-      <div style={{ fontSize: '0.75rem', color: 'var(--gray)', fontFamily: "'DM Sans', sans-serif", marginTop: '8px', fontStyle: 'italic' }}>
+      <div style={{ fontSize: '0.75rem', color: 'var(--gray)', fontFamily: "'IBM Plex Sans', sans-serif", marginTop: '8px', fontStyle: 'italic' }}>
         {t.step2.balance_sheet_note}
       </div>
     </div>
@@ -258,12 +258,12 @@ function YtdCard({ t }) {
 function TagRow({ label, tags, color, bg }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-      <span style={{ fontSize: '0.75rem', color: 'var(--gray)', fontFamily: "'DM Sans', sans-serif", minWidth: '90px' }}>
+      <span style={{ fontSize: '0.75rem', color: 'var(--gray)', fontFamily: "'IBM Plex Sans', sans-serif", minWidth: '90px' }}>
         {label}:
       </span>
       {tags.map((tag) => (
         <span key={tag} style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: "'IBM Plex Mono', monospace",
           fontSize: '0.72rem',
           fontWeight: 700,
           color,

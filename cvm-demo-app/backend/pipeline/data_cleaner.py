@@ -43,6 +43,26 @@ def _company_search_key(company_name: str) -> str:
     return company_name.split()[0].upper()
 
 
+def _company_filter_mask(series, company_name: str, exclude: list[str] | None = None):
+    """Build a boolean mask matching company_name against a DENOM_CIA column.
+
+    Tries exact match first (prevents 'PETROLEO' matching 'REFINARIA DE PETROLEOS').
+    Falls back to first-word substring match if no exact match found.
+    """
+    upper = series.str.upper().str.strip()
+    full_name = company_name.strip().upper()
+    exact = upper == full_name
+    if exact.any():
+        mask = exact
+    else:
+        key = company_name.split()[0].upper()
+        mask = upper.str.contains(key, na=False)
+    if exclude:
+        for excl in exclude:
+            mask = mask & ~upper.str.contains(excl, na=False)
+    return mask
+
+
 def _count_filter_stages(
     company_name: str,
     data_dir: Path,
@@ -98,13 +118,9 @@ def _count_filter_stages(
 
                                     # Company filter (before ORDEM_EXERC — new funnel start)
                                     if "DENOM_CIA" in df.columns and not df.empty:
-                                        co_mask = df["DENOM_CIA"].str.upper().str.contains(
-                                            company_key, na=False
+                                        co_mask = _company_filter_mask(
+                                            df["DENOM_CIA"], company_name, exclude
                                         )
-                                        for excl in exclude:
-                                            co_mask &= ~df["DENOM_CIA"].str.upper().str.contains(
-                                                excl, na=False
-                                            )
                                         df_co_raw = df[co_mask].copy()
                                     else:
                                         df_co_raw = df.copy()
@@ -220,9 +236,7 @@ def prepare(company_name: str, data_dir: Path, years: list[int]) -> dict:
             if df.empty or "DENOM_CIA" not in df.columns:
                 continue
             # Company filter (applied here so we don't carry all companies forward)
-            mask = df["DENOM_CIA"].str.upper().str.contains(company_key, na=False)
-            for excl in exclude:
-                mask &= ~df["DENOM_CIA"].str.upper().str.contains(excl, na=False)
+            mask = _company_filter_mask(df["DENOM_CIA"], company_name, exclude)
             df = df[mask].copy()
             if not df.empty:
                 df["_doc_type"] = doc_type.upper()

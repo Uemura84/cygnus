@@ -1,0 +1,180 @@
+{
+  "_description": "Expected DistressScoreResult for each fixture. Updated for spec v1.5: signal cap at 10, ambiguous classification (0.5 multiplier), Distress split into Distress (80-89) and Severe Distress (90-100). Use exact integer comparison on score, exact string comparison on band and override_applied.",
+
+  "braskem": {
+    "company_name": "BRASKEM S.A.",
+    "distress_score": 100,
+    "band": "Severe Distress",
+    "band_description": "Acute crisis — existential refinancing / solvency window",
+    "score_breakdown": {
+      "gating_score": 60,
+      "fundamentals_score": 30,
+      "signal_score": 10,
+      "raw_signal_score": 41,
+      "signal_cap_applied": true
+    },
+    "override": {
+      "applied": "O1_insolvency_plus_going_concern",
+      "pre_override_score": 100,
+      "pre_override_band": "Severe Distress",
+      "secondary_overrides_matched": ["O2_insolvency_plus_cash_burn_plus_illiquidity"]
+    },
+    "gating_facts_fired": ["G01", "G02", "G05"],
+    "fundamentals_components_expected": {
+      "profitability": 10,
+      "cash_generation": 8,
+      "leverage": 6,
+      "liquidity": 6
+    },
+    "cycle_expected": {
+      "cycle_position": "post_peak_declining",
+      "guardrail_applied": false
+    },
+    "notes": "Score at 100 ceiling, lands in Severe Distress (>=90). Both overrides match: O1 wins (primary), O2 recorded as secondary. Signal cap bit heavily: raw 41 -> 10."
+  },
+
+  "suzano": {
+    "company_name": "SUZANO HOLDING S.A.",
+    "distress_score": 23,
+    "band": "Stable",
+    "band_description": "Monitor routinely",
+    "score_breakdown": {
+      "gating_score": 10,
+      "fundamentals_score": 3,
+      "signal_score": 10,
+      "raw_signal_score": 12.9,
+      "signal_cap_applied": true
+    },
+    "override": {
+      "applied": null,
+      "pre_override_score": 23,
+      "pre_override_band": "Stable",
+      "secondary_overrides_matched": []
+    },
+    "gating_facts_fired": ["G04"],
+    "fundamentals_components_expected": {
+      "profitability": 0,
+      "cash_generation": 0,
+      "leverage": 3,
+      "liquidity": 0
+    },
+    "cycle_expected": {
+      "cycle_position": "post_peak_declining",
+      "guardrail_applied": false
+    },
+    "notes": "Capex_starvation reclassified from structural to ambiguous (0.5x multiplier) per v1.5. Raw signal score drops from 15.4 to 12.9. Still hits cap at 10. Final score drops from 28 to 23, still Stable. The ambiguous reclassification is the clearest product validation of the new category."
+  },
+
+  "synthetic_s1_o1_test": {
+    "company_name": "SYNTHETIC S1 — O1 override test",
+    "distress_score": 80,
+    "band": "Distress",
+    "band_description": "Immediate action required — restructuring candidate",
+    "score_breakdown": {
+      "gating_score": 50,
+      "fundamentals_score": 8,
+      "signal_score": 0,
+      "raw_signal_score": 0,
+      "signal_cap_applied": false
+    },
+    "override": {
+      "applied": "O1_insolvency_plus_going_concern",
+      "pre_override_score": 58,
+      "pre_override_band": "Watchlist",
+      "secondary_overrides_matched": []
+    },
+    "gating_facts_fired": ["G01", "G02"],
+    "fundamentals_components_expected": {
+      "profitability": 5,
+      "cash_generation": 0,
+      "leverage": 0,
+      "liquidity": 3
+    },
+    "cycle_expected": {
+      "cycle_position": "unknown",
+      "guardrail_applied": false
+    },
+    "notes": "CRITICAL TEST: Pre-override 58 (Watchlist) but O1 forces to 80 (Distress, not Severe Distress — floor is 80). Validates that O1 lands in Distress sub-band and does not over-promote."
+  },
+
+  "synthetic_s2_o2_test": {
+    "company_name": "SYNTHETIC S2 — O2 override test",
+    "distress_score": 60,
+    "band": "High Risk",
+    "band_description": "Board-level attention, scenario planning",
+    "score_breakdown": {
+      "gating_score": 25,
+      "fundamentals_score": 22,
+      "signal_score": 5,
+      "raw_signal_score": 5,
+      "signal_cap_applied": false
+    },
+    "override": {
+      "applied": "O2_insolvency_plus_cash_burn_plus_illiquidity",
+      "pre_override_score": 52,
+      "pre_override_band": "Watchlist",
+      "secondary_overrides_matched": []
+    },
+    "gating_facts_fired": ["G01"],
+    "fundamentals_components_expected": {
+      "profitability": 5,
+      "cash_generation": 8,
+      "leverage": 3,
+      "liquidity": 6
+    },
+    "cycle_expected": {
+      "cycle_position": "unknown",
+      "guardrail_applied": false
+    },
+    "notes": "Signal score 5 below cap 10, so cap does not bite. Same behavior as v1.4. Validates O2 floor at 60."
+  },
+
+  "synthetic_s3_guardrail_test": {
+    "company_name": "SYNTHETIC S3 — cycle guardrail test",
+    "distress_score": 13,
+    "band": "Healthy",
+    "band_description": "No action",
+    "score_breakdown": {
+      "gating_score": 0,
+      "fundamentals_score": 8,
+      "signal_score": 5,
+      "raw_signal_score": 5,
+      "signal_cap_applied": false
+    },
+    "override": {
+      "applied": null,
+      "pre_override_score": 13,
+      "pre_override_band": "Healthy",
+      "secondary_overrides_matched": []
+    },
+    "gating_facts_fired": [],
+    "fundamentals_components_expected": {
+      "profitability": 5,
+      "cash_generation": 0,
+      "leverage": 3,
+      "liquidity": 0
+    },
+    "cycle_expected": {
+      "cycle_position": "unknown",
+      "guardrail_applied": true
+    },
+    "notes": "Unchanged from v1.4. Guardrail still fires (margin range 5.5pp < 10pp). Signal stays structural via Test 4 (6-period persistence exceeds cycle_length 3)."
+  },
+
+  "_test_summary": {
+    "total_fixtures": 5,
+    "tests_validating_layer": {
+      "gating_scoring": ["braskem", "suzano"],
+      "fundamentals_scoring": ["braskem", "suzano", "synthetic_s1_o1_test", "synthetic_s2_o2_test", "synthetic_s3_guardrail_test"],
+      "signal_cap_at_10": ["braskem", "suzano"],
+      "ambiguous_classification": ["suzano"],
+      "cycle_guardrail": ["synthetic_s3_guardrail_test"],
+      "override_o1": ["synthetic_s1_o1_test"],
+      "override_o2": ["synthetic_s2_o2_test"],
+      "override_precedence": ["braskem"],
+      "severe_distress_sub_band": ["braskem"],
+      "distress_sub_band_via_override": ["synthetic_s1_o1_test"]
+    },
+    "minimum_required_passing": "All 5 must pass before shipping."
+  }
+}

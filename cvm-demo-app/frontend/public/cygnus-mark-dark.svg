@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" width="88" height="88" role="img" aria-label="Cygnus mark (dark)">
+  
+  <path d="M 62 16 A 32 32 0 1 0 62 68" fill="none" stroke="#5fb9c0" stroke-width="9" stroke-linecap="round"></path>
+  <circle cx="66" cy="42" r="6" fill="#eef2f7"></circle>
+  <rect x="40" y="32" width="12" height="3" fill="#5fb9c0" opacity="0.40"></rect>
+  <rect x="34" y="40" width="20" height="3" fill="#5fb9c0" opacity="0.65"></rect>
+  <rect x="28" y="48" width="28" height="3" fill="#5fb9c0" opacity="1"></rect>
+</svg>

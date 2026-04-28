@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
 from config import app_config, pipeline_state, CACHE_DIR, DATA_DIR
 from cache_utils import load_cache, save_cache
@@ -177,6 +178,54 @@ def run_step(step_number: int):
 
 
 # ---------------------------------------------------------------------------
+# Export endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/export/context")
+def export_context(
+    company: str = Query(default=""),
+    lang: str = Query(default="en"),
+):
+    from export_context import build_markdown
+    import re as _re
+    company_name = company.strip() or app_config.company_name
+    lang_norm = lang.lower().strip()
+    if lang_norm not in ("en", "pt-br"):
+        lang_norm = "en"
+    md = build_markdown(company_name=company_name, lang=lang_norm, cache_dir=CACHE_DIR)
+    today = time.strftime("%Y-%m-%d")
+    safe_co = _re.sub(r"[^A-Z0-9]+", "-", company_name.upper()).strip("-")
+    filename = f"cygnus-context-{safe_co}-{today}.md"
+    return Response(
+        content=md.encode("utf-8"),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.post("/api/report/pdf")
+def report_pdf(body: dict):
+    from report_pdf import build_pdf
+    import re as _re
+    company_name = (body.get("company") or app_config.company_name).strip()
+    lang = (body.get("lang") or app_config.language or "en").lower().strip()
+    if lang not in ("en", "pt-br"):
+        lang = "en"
+    try:
+        pdf_bytes = build_pdf(company_name=company_name, lang=lang, cache_dir=CACHE_DIR)
+    except RuntimeError as e:
+        return {"status": "error", "message": str(e)}
+    today = time.strftime("%Y-%m-%d")
+    safe_co = _re.sub(r"[^A-Z0-9]+", "-", company_name.upper()).strip("-")
+    filename = f"cygnus-report-{safe_co}-{today}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ---------------------------------------------------------------------------
 # WebSocket — Step 9 LLM streaming
 # ---------------------------------------------------------------------------
 
@@ -267,53 +316,125 @@ async def llm_stream(websocket: WebSocket):
         step = payload.get("step", 9)
 
         if step == 7:
-            # Serve from cache when cache_mode is on
+            # Serve from cache when cache_mode is on — re-emit as section messages
             if app_config.cache_mode:
-                cached = load_cache(7, CACHE_DIR, company_name=app_config.company_name)
+                lang_suffix = f"_{app_config.language}"
+                cached = load_cache(7, CACHE_DIR, company_name=app_config.company_name, suffix=lang_suffix)
                 if cached:
                     cached_text = cached.get("data", {}).get("response_text", "")
                     if cached_text:
                         pipeline_state["step7"] = {"response_text": cached_text}
-                        await websocket.send_text(cached_text)
+                        try:
+                            cached_obj = json.loads(cached_text)
+                            if "macro_context" in cached_obj:
+                                await websocket.send_text(json.dumps({"__section": "macro_context", "data": cached_obj["macro_context"]}))
+                            for key in ("profitability", "balance_sheet", "cash_flow", "cross_module"):
+                                val = cached_obj.get("modules", {}).get(key)
+                                if val is not None:
+                                    await websocket.send_text(json.dumps({"__section": key, "data": val}))
+                        except Exception:
+                            await websocket.send_text(cached_text)
                         await websocket.send_text("[DONE]")
                         return
 
-            # Live LLM call — stream tokens to frontend, accumulate for cache
-            full_text = ""
+            # Enrich payload with DVA/DMPL series from step 4 for cross-module context
+            step4_ps = pipeline_state.get("step4") or {}
+            if not step4_ps:
+                _c4 = load_cache(4, CACHE_DIR, company_name=app_config.company_name)
+                step4_ps = (_c4 or {}).get("data", {})
+            if "dva_series" not in payload:
+                payload["dva_series"] = step4_ps.get("dva_series", [])
+            if "dmpl_series" not in payload:
+                payload["dmpl_series"] = step4_ps.get("dmpl_series", [])
+
+            # Enrich payload with FRE data from step 6 for debt structure context
+            step6_ps = pipeline_state.get("step6") or {}
+            if not step6_ps:
+                _c6 = load_cache(6, CACHE_DIR, company_name=app_config.company_name)
+                step6_ps = (_c6 or {}).get("data", {})
+            if "fre_foreign_bonds" not in payload:
+                payload["fre_foreign_bonds"] = step6_ps.get("fre_foreign_bonds", [])
+            if "fre_auditor_profiles" not in payload:
+                payload["fre_auditor_profiles"] = step6_ps.get("fre_auditor_profiles", [])
+
+            # Live LLM call — yield one section message per completed section
+            sections: dict[str, Any] = {}
             async for token in step7_ai_agent.stream(payload, config=app_config):
-                full_text += token
                 await websocket.send_text(token)
-            cleaned_json = _clean_step7_json(full_text)
+                try:
+                    msg = json.loads(token)
+                    if isinstance(msg, dict) and "__section" in msg:
+                        sections[msg["__section"]] = msg.get("data", {})
+                except Exception:
+                    pass
+
+            assembled = {
+                "macro_context": sections.get("macro_context", {}),
+                "modules": {
+                    "profitability": sections.get("profitability", {}),
+                    "balance_sheet": sections.get("balance_sheet", {}),
+                    "cash_flow":     sections.get("cash_flow", {}),
+                    "cross_module":  sections.get("cross_module", {}),
+                },
+            }
+            if "transparency" in sections:
+                assembled["transparency"] = sections["transparency"]
+            cleaned_json = json.dumps(assembled, ensure_ascii=False)
             pipeline_state["step7"] = {"response_text": cleaned_json}
             save_cache(7, {
                 "status": "complete",
                 "data": {"response_text": cleaned_json, "status": "complete"},
                 "metadata": {"source": "websocket"},
-            }, CACHE_DIR, company_name=app_config.company_name)
+            }, CACHE_DIR, company_name=app_config.company_name, suffix=f"_{app_config.language}")
         elif step == 8:
-            # Serve from cache when cache_mode is on
+            # Serve from cache when cache_mode is on — re-emit as section messages
             if app_config.cache_mode:
-                cached = load_cache(8, CACHE_DIR, company_name=app_config.company_name)
+                lang_suffix = f"_{app_config.language}"
+                cached = load_cache(8, CACHE_DIR, company_name=app_config.company_name, suffix=lang_suffix)
                 if cached:
                     cached_text = cached.get("data", {}).get("response_text", "")
                     if cached_text:
                         pipeline_state["step8"] = {"response_text": cached_text}
-                        await websocket.send_text(cached_text)
+                        try:
+                            cached_obj = json.loads(cached_text)
+                            for section_key, fields in [
+                                ("diagnosis", ["executive_summary", "key_findings", "next_step"]),
+                                ("timeline",  ["what_happened", "when_things_turned"]),
+                                ("severity",  ["how_serious", "what_comes_next"]),
+                                ("gaps",      ["what_we_cant_answer", "data_gaps", "suggested_questions"]),
+                            ]:
+                                data = {k: cached_obj[k] for k in fields if k in cached_obj}
+                                if data:
+                                    await websocket.send_text(json.dumps({"__section": section_key, "data": data}))
+                        except Exception:
+                            await websocket.send_text(cached_text)
                         await websocket.send_text("[DONE]")
                         return
 
-            # Live LLM call — stream tokens to frontend, accumulate for cache
-            full_text = ""
+            # Live LLM call — yield one section message per completed section
+            sections: dict[str, Any] = {}
             async for token in step8_reporting.stream(payload, config=app_config):
-                full_text += token
                 await websocket.send_text(token)
-            cleaned_json = _clean_step7_json(full_text)
+                try:
+                    msg = json.loads(token)
+                    if isinstance(msg, dict) and "__section" in msg:
+                        sections[msg["__section"]] = msg.get("data", {})
+                except Exception:
+                    pass
+
+            assembled = {
+                **sections.get("diagnosis", {}),
+                **sections.get("timeline",  {}),
+                **sections.get("severity",  {}),
+                **sections.get("gaps",      {}),
+            }
+            cleaned_json = json.dumps(assembled, ensure_ascii=False)
             pipeline_state["step8"] = {"response_text": cleaned_json}
             save_cache(8, {
                 "status": "complete",
                 "data": {"response_text": cleaned_json, "status": "complete"},
                 "metadata": {"source": "websocket"},
-            }, CACHE_DIR, company_name=app_config.company_name)
+            }, CACHE_DIR, company_name=app_config.company_name, suffix=f"_{app_config.language}")
         else:
             # Step 9 Q&A — conversational streaming with pipeline context
             async for token in step9_llm_analysis.stream(

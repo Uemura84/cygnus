@@ -7,10 +7,18 @@
 import styles from './RiskGauge.module.css'
 
 const LEVEL_COLOR = {
-  LOW:      '#1e90ff',
+  // Legacy levels (backward compat with old caches)
+  LOW:      '#0e8f9a',
   MEDIUM:   '#EF9F27',
   HIGH:     '#E24B4A',
   CRITICAL: '#E24B4A',
+  // Distress scoring v1.5 bands
+  'Healthy':          '#0e8f9a',
+  'Stable':           '#0e8f9a',
+  'Watchlist':        '#EF9F27',
+  'High Risk':        '#E24B4A',
+  'Distress':         '#E24B4A',
+  'Severe Distress':  '#991b1b',
 }
 
 export default function RiskGauge({ score, level }) {
@@ -33,9 +41,8 @@ export default function RiskGauge({ score, level }) {
     <div className={styles.wrapper}>
       <svg width="200" height="115" viewBox="0 0 200 115">
         <defs>
-          {/* Horizontal gradient: Signal Blue (low) → Amber (medium) → Red (critical) */}
           <linearGradient id="riskGaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stopColor="#1e90ff" />
+            <stop offset="0%"   stopColor="#0e8f9a" />
             <stop offset="50%"  stopColor="#EF9F27" />
             <stop offset="100%" stopColor="#E24B4A" />
           </linearGradient>
@@ -63,13 +70,13 @@ export default function RiskGauge({ score, level }) {
         <line
           x1={cx}         y1={cy}
           x2={needleTipX} y2={needleTipY}
-          stroke="var(--navy, #0b1f3a)"
-          strokeWidth={2.5}
+          stroke="rgba(11,31,58,0.25)"
+          strokeWidth={2}
           strokeLinecap="round"
         />
         {/* Needle hub */}
-        <circle cx={cx} cy={cy} r={5} fill="var(--navy, #0b1f3a)" />
-        <circle cx={cx} cy={cy} r={2.5} fill="var(--offwhite, #f5f7fa)" />
+        <circle cx={cx} cy={cy} r={4} fill="rgba(11,31,58,0.25)" />
+        <circle cx={cx} cy={cy} r={2} fill="var(--offwhite, #f5f7fa)" />
 
         {/* Score number */}
         <text

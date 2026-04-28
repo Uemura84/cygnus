@@ -51,21 +51,21 @@
   font-size: 1rem;
   font-weight: 600;
   color: var(--navy);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   letter-spacing: 0.01em;
 }
 
 .contextSep {
   font-size: 0.72rem;
   color: rgba(11, 31, 58, 0.2);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
 }
 
 .contextLabel {
   font-size: 0.875rem;
   font-weight: 400;
   color: var(--gray);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
 }
 
 .contextRight {
@@ -103,7 +103,7 @@
   font-size: 0.78rem;
   font-weight: 500;
   color: var(--gray);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   transition: background 0.15s, border-color 0.15s;
 }
 
@@ -139,7 +139,7 @@
   font-size: 0.85rem;
   font-weight: 400;
   color: var(--gray);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   transition: color 0.15s;
 }
 
@@ -158,19 +158,19 @@
   padding: 8px 20px;
   border-radius: 6px;
   border: none;
-  background: var(--blue);
+  background: var(--teal);
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 600;
   color: #fff;
-  font-family: 'DM Sans', sans-serif;
-  box-shadow: 0 2px 8px rgba(30, 144, 255, 0.3);
+  font-family: 'IBM Plex Sans', sans-serif;
+  box-shadow: 0 2px 8px rgba(14, 143, 154, 0.3);
   transition: background 0.15s, box-shadow 0.15s;
 }
 
 .navBtnNext:hover:not(:disabled) {
   background: #3a9eff;
-  box-shadow: 0 3px 12px rgba(30, 144, 255, 0.45);
+  box-shadow: 0 3px 12px rgba(14, 143, 154, 0.45);
 }
 
 .navBtnNext:disabled {

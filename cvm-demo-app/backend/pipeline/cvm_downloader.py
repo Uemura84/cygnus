@@ -17,6 +17,7 @@ import pandas as pd
 
 BASE_URL_DFP = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS"
 BASE_URL_ITR = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS"
+BASE_URL_FRE = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FRE/DADOS"
 
 # Holding/parent entities that share a company name fragment but duplicate
 # the operating company's numbers. Extend per company as needed (Phase 2).
@@ -27,7 +28,10 @@ EXCLUDE_MAP: dict[str, list[str]] = {
 }
 
 # Statement file types inside each ZIP (used for statements_found counting)
-_STATEMENT_TYPES = ["dre_con", "bpa_con", "bpp_con", "dfc_mi_con"]
+_STATEMENT_TYPES = ["dre_con", "bpa_con", "bpp_con", "dfc_mi_con", "dva_con", "dmpl_con", "dra_con"]
+
+# Parecer file pattern (separate from statement types — counted differently)
+_PARECER_PATTERN = "parecer"
 
 
 def _company_search_key(company_name: str) -> str:
@@ -210,6 +214,9 @@ def download(company_name: str, years: list[int], data_dir: Path) -> dict:
     itr_file_counts  = {ft: 0 for ft in _STATEMENT_TYPES}
     total_rows_by_ft = {ft: 0 for ft in _STATEMENT_TYPES}
 
+    # Parecer (auditor report) counts — DFP only
+    parecer_dfp_count = 0
+
     for year in years:
         # DFP (annual)
         dfp_path = raw_dir / f"dfp_cia_aberta_{year}.zip"
@@ -225,6 +232,14 @@ def download(company_name: str, years: list[int], data_dir: Path) -> dict:
                 if info["found"]:
                     dfp_file_counts[ft] += 1
                 total_rows_by_ft[ft] += info["rows"]
+            # Count Parecer files in this DFP ZIP
+            try:
+                with zipfile.ZipFile(dfp_path, "r") as _zf:
+                    _parecer = [n for n in _zf.namelist() if _PARECER_PATTERN in n.lower() and n.endswith(".csv")]
+                    if _parecer:
+                        parecer_dfp_count += 1
+            except Exception:
+                pass
 
         # ITR (quarterly)
         itr_path = raw_dir / f"itr_cia_aberta_{year}.zip"
@@ -271,6 +286,91 @@ def download(company_name: str, years: list[int], data_dir: Path) -> dict:
             "itr_files": itr_file_counts["dfc_mi_con"],
             "total_rows": total_rows_by_ft["dfc_mi_con"],
         },
+        {
+            "type": "dva",
+            "dfp_files": dfp_file_counts["dva_con"],
+            "itr_files": itr_file_counts["dva_con"],
+            "total_rows": total_rows_by_ft["dva_con"],
+        },
+        {
+            "type": "dmpl",
+            "dfp_files": dfp_file_counts["dmpl_con"],
+            "itr_files": itr_file_counts["dmpl_con"],
+            "total_rows": total_rows_by_ft["dmpl_con"],
+        },
+        {
+            "type": "dra",
+            "dfp_files": dfp_file_counts["dra_con"],
+            "itr_files": itr_file_counts["dra_con"],
+            "total_rows": total_rows_by_ft["dra_con"],
+        },
+        {
+            "type": "parecer",
+            "dfp_files": parecer_dfp_count,
+            "itr_files": 0,
+            "total_rows": parecer_dfp_count,
+        },
+    ]
+
+    # FRE (annual reference forms)
+    # Files we actively use in the pipeline
+    _FRE_FILE_TYPES = [
+        ("auditor",       "fre_cia_aberta_auditor",        "Nome_Companhia"),
+        ("titulo_exterior", "fre_cia_aberta_titulo_exterior", "Nome_Companhia"),
+    ]
+
+    fre_dir = raw_dir / "fre"
+    fre_dir.mkdir(parents=True, exist_ok=True)
+    fre_files_downloaded: list[str] = []
+    fre_file_sizes: list[int] = []
+
+    # Per-file-type counts across all years
+    fre_year_counts:     dict[str, int]   = {k: 0 for k, _, _ in _FRE_FILE_TYPES}
+    fre_row_counts:      dict[str, int]   = {k: 0 for k, _, _ in _FRE_FILE_TYPES}
+
+    for year in years:
+        fre_path = fre_dir / f"fre_cia_aberta_{year}.zip"
+        ok = _download_file(f"{BASE_URL_FRE}/fre_cia_aberta_{year}.zip", fre_path)
+        if not (ok and fre_path.exists()):
+            continue
+        fre_files_downloaded.append(fre_path.name)
+        fre_file_sizes.append(fre_path.stat().st_size)
+
+        # Count company rows in each used file type
+        try:
+            with zipfile.ZipFile(fre_path, "r") as zf:
+                for ftype, prefix, name_col in _FRE_FILE_TYPES:
+                    matched = [n for n in zf.namelist() if prefix in n and n.endswith(".csv")]
+                    if not matched:
+                        continue
+                    fre_year_counts[ftype] += 1
+                    try:
+                        with zf.open(matched[0]) as f:
+                            df = pd.read_csv(
+                                f, sep=";", encoding="latin-1",
+                                low_memory=False, usecols=[name_col],
+                            )
+                        mask = df[name_col].str.upper().str.contains(
+                            company_key, na=False
+                        )
+                        for excl in exclude:
+                            mask &= ~df[name_col].str.upper().str.contains(excl, na=False)
+                        fre_row_counts[ftype] += int(mask.sum())
+                    except Exception:
+                        pass
+        except (zipfile.BadZipFile, FileNotFoundError):
+            pass
+
+    fre_total_size = sum(fre_file_sizes)
+    fre_size_mb = round(fre_total_size / (1024 * 1024), 1) if fre_total_size else 0
+
+    fre_statements_found = [
+        {
+            "type":       ftype,
+            "fre_files":  fre_year_counts[ftype],
+            "total_rows": fre_row_counts[ftype],
+        }
+        for ftype, _, _ in _FRE_FILE_TYPES
     ]
 
     return {
@@ -281,5 +381,9 @@ def download(company_name: str, years: list[int], data_dir: Path) -> dict:
         "date_range": date_range,
         "files_downloaded": files_downloaded,
         "statements_found": statements_found,
+        "fre_files_downloaded": fre_files_downloaded,
+        "fre_files_count": len(fre_files_downloaded),
+        "fre_size_mb": fre_size_mb,
+        "fre_statements_found": fre_statements_found,
         "source": "live",
     }

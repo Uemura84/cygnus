@@ -1,0 +1,97 @@
+{
+  "company": {
+    "name": "SUZANO HOLDING S.A.",
+    "sector_id": "PULP"
+  },
+  "analysis_window": {
+    "latest_annual_period": "2025-12-31",
+    "annual_periods": ["2020", "2021", "2022", "2023", "2024", "2025"],
+    "gross_margin_trajectory_pct": [37.7, 49.7, 50.2, 36.9, 42.2, 32.4]
+  },
+  "gating_inputs": {
+    "G01_negative_equity": {
+      "fires": false,
+      "closing_equity_brl_b": 44.0,
+      "period": "2025-12-31"
+    },
+    "G02_going_concern": {
+      "fires": false,
+      "auditor": "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES LTDA",
+      "opinion": "Unqualified",
+      "emphasis_topics": "Fair value of biological assets; tax and social security judicial liabilities"
+    },
+    "G03_persistent_liquidity_stress": {
+      "fires": false,
+      "current_ratio_history": [
+        { "period": "2024", "value": 1.72 },
+        { "period": "2025", "value": 3.19 }
+      ],
+      "reason_not_fired": "Current ratio >= 1.0 in both most recent periods"
+    },
+    "G04_distributing_while_insolvent": {
+      "fires": true,
+      "period": "2024",
+      "dividends_brl_b": 2.4,
+      "net_income_brl_b": -7.1,
+      "evidence": "Dividends of BRL 2.4B declared against net loss of BRL 7.1B in 2024"
+    },
+    "G05_financing_dependence_for_payouts": {
+      "fires": false,
+      "reason_not_fired": "FCF positive in 2024 (BRL +11.3B) and 2025 (BRL +13.5B); payout fundable from operations"
+    },
+    "G06_technical_insolvency_trajectory": {
+      "fires": false,
+      "equity_trajectory_brl_b": [18.1, 7.4, 15.2, 33.2, 44.8, 32.4, 44.0],
+      "reason_not_fired": "Equity growing over window; latest closing higher than opening"
+    }
+  },
+  "fundamentals_inputs": {
+    "latest_annual_period": "2025-12-31",
+    "ebit_margin_pct":       21.2,
+    "free_cash_flow_brl_b_latest": 13.5,
+    "fcf_last_3_years": [
+      { "period": "2023", "fcf_brl_b": 5.5  },
+      { "period": "2024", "fcf_brl_b": 11.3 },
+      { "period": "2025", "fcf_brl_b": 13.5 }
+    ],
+    "debt_to_ebitda": 3.6,
+    "current_ratio":   3.19
+  },
+  "findings": [
+    {
+      "id": "F001",
+      "signal_type": "margin_compression",
+      "classification_hint": "cyclical",
+      "classification_reason": "Compression measured against 2021 cycle peak; current EBIT margin 21.2% well within sector bound (-20% to +60%); peak-base effect",
+      "evidence": "EBIT margin compressed 2.3pp/year from historical avg 33.6%"
+    },
+    {
+      "id": "F003",
+      "signal_type": "cost_composition_drift",
+      "classification_hint": "cyclical",
+      "classification_reason": "First-half period includes 2021 supercycle peak; COGS/Revenue 62.8% still inside sector bounds (30-90%)",
+      "evidence": "COGS burden 54.1% -> 62.8%; 8.7pp shift reflects cycle reversal"
+    },
+    {
+      "id": "F006",
+      "signal_type": "margin_compression",
+      "classification_hint": "cyclical",
+      "classification_reason": "Q3 2023 comparison against Q3 2022 includes cycle-peak base; base-effect check fires",
+      "evidence": "EBIT margin Q3 2023 deteriorated 30.1pp vs Q3 2022"
+    },
+    {
+      "id": "CF001",
+      "signal_type": "capex_starvation",
+      "classification_hint": "ambiguous",
+      "classification_reason": "Single-period capex/D&A reading of 0.41x. Could be deliberate cash conservation after the Cerrado expansion cycle, or genuine maintenance deferral eroding productive capacity. Persistence across additional periods is the deciding variable — evidence is currently unresolved.",
+      "evidence": "Capex/D&A 0.41x, spending below half of depreciation rate"
+    },
+    {
+      "id": "BS003",
+      "signal_type": "fx_debt_exposure",
+      "classification_hint": "structural",
+      "classification_reason": "100% USD-denominated debt is structural capital-structure choice, not cycle-driven",
+      "evidence": "BRL 52.3B USD foreign bonds, 16 instruments"
+    }
+  ]
+}

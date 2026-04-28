@@ -1,10 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Cygnus Mark — Standalone (transparent bg, works on dark or light) -->
-  <g transform="translate(32, 32)">
-    <ellipse cx="0" cy="0" rx="28" ry="9" fill="none" stroke="#1e90ff" stroke-width="0.9" opacity="0.12"/>
-    <ellipse cx="0" cy="0" rx="21" ry="7" fill="none" stroke="#1e90ff" stroke-width="1.0" opacity="0.22"/>
-    <ellipse cx="0" cy="0" rx="14" ry="4.8" fill="none" stroke="#1e90ff" stroke-width="1.2" opacity="0.38"/>
-    <circle cx="0" cy="0" r="5.5" fill="#1e90ff"/>
-    <circle cx="0" cy="0" r="2.2" fill="#0b1f3a"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" width="88" height="88" role="img" aria-label="Cygnus mark">
+  
+  <path d="M 62 16 A 32 32 0 1 0 62 68" fill="none" stroke="#0b1f3a" stroke-width="9" stroke-linecap="round"></path>
+  <circle cx="66" cy="42" r="6" fill="#0E8F9A"></circle>
+  <rect x="40" y="32" width="12" height="3" fill="#0b1f3a" opacity="0.40"></rect>
+  <rect x="34" y="40" width="20" height="3" fill="#0b1f3a" opacity="0.65"></rect>
+  <rect x="28" y="48" width="28" height="3" fill="#0b1f3a" opacity="1"></rect>
 </svg>

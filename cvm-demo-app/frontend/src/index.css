@@ -1,11 +1,14 @@
 :root {
   --navy: #0b1f3a;
+  --navy-soft: #1c2f4a;
   --gray: #4a5568;
-  --blue: #1e90ff;
+  --teal: #0e8f9a;
+  --gridline-gray: #9aa5b4;
+  --divider-gray: #e2e6ec;
   --offwhite: #f5f7fa;
   --charcoal: #2b2b2b;
-  --blue-dim: rgba(30, 144, 255, 0.08);
-  --blue-line: rgba(30, 144, 255, 0.25);
+  --teal-dim: rgba(14, 143, 154, 0.08);
+  --teal-line: rgba(14, 143, 154, 0.25);
 }
 
 *, *::before, *::after {
@@ -15,7 +18,7 @@
 }
 
 body {
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--offwhite);
   color: var(--charcoal);
   min-height: 100vh;

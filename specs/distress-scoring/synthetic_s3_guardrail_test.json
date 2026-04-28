@@ -1,0 +1,54 @@
+{
+  "company": {
+    "name": "SYNTHETIC S3 — cycle guardrail test",
+    "sector_id": "DEFAULT"
+  },
+  "_purpose": "Validates the 10pp gross margin range guardrail (§5.3). A company with narrow margin range across the window should have cycle_position = unknown, Test 2 base-effect check skipped, and signals classified via Tests 3 and 4 instead. Without the guardrail, this company's slow structural decline could be mislabeled cyclical.",
+  "analysis_window": {
+    "latest_annual_period": "2025-12-31",
+    "annual_periods": ["2020", "2021", "2022", "2023", "2024", "2025"],
+    "gross_margin_trajectory_pct": [28.0, 27.5, 26.0, 25.0, 24.0, 22.5],
+    "_note": "Gross margin range = max(28.0) - min(22.5) = 5.5pp. Below 10pp threshold. Guardrail fires."
+  },
+  "gating_inputs": {
+    "G01_negative_equity":              { "fires": false, "closing_equity_brl_b": 3.5 },
+    "G02_going_concern":                { "fires": false, "opinion": "Unqualified" },
+    "G03_persistent_liquidity_stress":  { "fires": false, "current_ratio_history": [{ "period": "2024", "value": 1.8 }, { "period": "2025", "value": 1.7 }] },
+    "G04_distributing_while_insolvent": { "fires": false },
+    "G05_financing_dependence_for_payouts": { "fires": false },
+    "G06_technical_insolvency_trajectory": { "fires": false }
+  },
+  "fundamentals_inputs": {
+    "latest_annual_period": "2025-12-31",
+    "ebit_margin_pct":        4.0,
+    "free_cash_flow_brl_b_latest": 0.5,
+    "fcf_last_3_years": [
+      { "period": "2023", "fcf_brl_b": 1.2 },
+      { "period": "2024", "fcf_brl_b": 0.8 },
+      { "period": "2025", "fcf_brl_b": 0.5 }
+    ],
+    "debt_to_ebitda": 3.0,
+    "current_ratio":   1.7
+  },
+  "findings": [
+    {
+      "id": "F_SYNTH_3_1",
+      "signal_type": "margin_compression",
+      "classification_hint": "structural",
+      "classification_reason": "Guardrail fires (margin range 5.5pp < 10pp). Test 2 skipped. Test 3 (sector-relative): gross margin 22.5% within bounds. Test 4 (persistence): 6 consecutive declining periods exceeds cycle_length_years=3. Classification: structural.",
+      "evidence": "Gross margin 28% -> 22.5% over 6 years, monotonically declining"
+    }
+  ],
+  "_expected_math": {
+    "guardrail": "Gross margin range 5.5pp < 10pp threshold -> cycle_position = unknown, base-effect check disabled",
+    "gating": "0 (none fire)",
+    "fundamentals": "profitability 5 (EBIT 4% in 0-10 band) + cash_gen 0 (FCF positive) + leverage 0 (3x below half of 5x threshold = 2.5x... actually 3x >= 2.5x so = 3) ... recalculating: leverage 3 (3x at/above half-threshold 2.5x) + liquidity 0 (ratio 1.7 > 1.5) = 8",
+    "fundamentals_corrected": "5 + 0 + 3 + 0 = 8",
+    "signals": "Because guardrail fires, Test 2 cannot label this cyclical. Test 4 fires (6 period decline > cycle_length 3). Classification: structural. Signal score: 1 × 5 × 1.0 = 5",
+    "pre_override_total": "0 + 8 + 5 = 13",
+    "pre_override_band": "Healthy (0-20 band)",
+    "overrides": "G01 does not fire; neither O1 nor O2 activate",
+    "final": "Score 13, Band Healthy. cycle_position=unknown, guardrail_applied=true"
+  },
+  "_critical_assertion": "The margin_compression signal MUST be classified as 'structural' in this case. If the implementation skips the guardrail and tries to apply Test 2 (base-effect check), it would find that 2020 had the highest margin and could incorrectly label the 2025 signal 'cyclical' — discounting it to 0.3 × 5 = 1.5. The guardrail prevents that."
+}

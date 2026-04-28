@@ -1,0 +1,92 @@
+# Explanation Templates — Cygnus v1
+# Maps each stacked diagnosis to its candidate explanations, ranked by evidence score.
+
+DX-1_financial_distress:
+  candidate_explanations:
+    - relationship: cost_stickiness
+      label: "Structural cost inflation with rigid cost base"
+      score_boost: 1.0
+    - relationship: revenue_collapse_with_rigid_costs
+      label: "Revenue collapse outpacing cost adjustment capacity"
+      score_boost: 1.0
+    - relationship: overleveraged_capital_structure
+      label: "Debt burden exceeding earnings capacity"
+      score_boost: 0.8
+    - relationship: liquidity_exhaustion
+      label: "Operating cash insufficient for current obligations"
+      score_boost: 0.8
+
+  primary_selection: highest_score
+
+  chain_instruction: >
+    Present the primary explanation as the root cause. Frame balance
+    sheet and cash flow explanations as downstream consequences, not
+    competing causes. The narrative arc should be: cause (profitability)
+    → consequence (balance sheet) → outcome (cash/liquidity).
+
+DX-2_working_capital_trap:
+  candidate_explanations:
+    - relationship: working_capital_cash_trap
+      label: "Cash locked in working capital compounding cost pressure"
+      score_boost: 1.0
+    - relationship: cost_stickiness
+      label: "Cost pressure driving working capital accumulation"
+      score_boost: 0.9
+
+  primary_selection: highest_score
+
+  chain_instruction: >
+    Distinguish between working capital as cause (inventory
+    overproduction) vs. working capital as symptom (margin squeeze
+    forcing extended payment terms).
+
+DX-3_low_quality_growth:
+  candidate_explanations:
+    - relationship: margin_compression
+      label: "Growth purchased at the expense of margin"
+      score_boost: 1.0
+    - relationship: capex_starvation
+      label: "Growth without reinvestment — consuming asset base"
+      score_boost: 1.0
+    - relationship: earnings_quality_gap
+      label: "Revenue growth not converting to cash"
+      score_boost: 0.9
+
+  primary_selection: highest_score
+
+  chain_instruction: >
+    Frame as a strategic choice question: is the company
+    deliberately buying market share, or is it unable to grow
+    profitably? The capex starvation signal distinguishes
+    these — cut capex + growing revenue = harvesting, not investing.
+
+DX-4_confirmed_recovery:
+  candidate_explanations:
+    - relationship: margin_compression
+      label: "Margin trajectory reversing — cost structure adjusting"
+      condition: "direction == 'improvement'"
+      score_boost: 1.0
+
+  primary_selection: highest_score
+
+  chain_instruction: >
+    Recovery must be confirmed across at least 2 modules.
+    A single improving metric is not recovery. Frame with
+    appropriate caution — what would derail the recovery?
+
+DX-5_refinancing_cliff:
+  candidate_explanations:
+    - relationship: refinancing_pressure
+      label: "Near-term debt maturities concentrated while cash generation impaired"
+      score_boost: 1.0
+    - relationship: overleveraged_capital_structure
+      label: "Leverage too high to refinance at manageable rates"
+      score_boost: 0.9
+
+  primary_selection: highest_score
+
+  chain_instruction: >
+    This is an existential-timeline diagnosis. Lead with the
+    maturity schedule and cash generation gap. Include FX
+    exposure if BS-9 triggered. The question for the CFO is
+    not "is there a problem" but "how much time do we have."

@@ -95,6 +95,12 @@ def _check_leverage_escalation(series: list, company: str) -> list:
             f"{'Critical' if severity == 'CRITICAL' else 'Elevated'} leverage "
             f"{'constrains refinancing capacity' if severity in ('CRITICAL','HIGH') else 'is trending upward'}."
         ),
+        "description_pt": (
+            f"{company}: Dívida/EBITDA atingiu {latest:.1f}× "
+            f"(era {values[0]:.1f}× no início). "
+            f"Alavancagem {'crítica' if severity == 'CRITICAL' else 'elevada'} "
+            f"{'restringe a capacidade de refinanciamento' if severity in ('CRITICAL','HIGH') else 'com tendência de alta'}."
+        ),
         "insight": (
             f"{company}: Debt/EBITDA at {latest:.1f}×."
         ),
@@ -173,6 +179,11 @@ def _check_working_capital_deterioration(series: list, company: str) -> list:
             + "; ".join(s[1] for s in signals) + ". "
             f"{'Multiple sub-metrics deteriorating simultaneously.' if n_deteriorating >= 2 else ''}"
         ),
+        "description_pt": (
+            f"{company}: Capital de giro sob pressão — "
+            + "; ".join(s[1] for s in signals) + ". "
+            f"{'Múltiplas sub-métricas deteriorando simultaneamente.' if n_deteriorating >= 2 else ''}"
+        ),
         "insight": f"{company}: WC signals: " + "; ".join(s[1] for s in signals),
     })
     return findings
@@ -197,21 +208,26 @@ def _check_liquidity_stress(series: list, company: str) -> list:
 
     severity = None
     reason = ""
+    reason_pt = ""
     if latest_cr < 1.0:
         severity = "HIGH"
-        reason = f"current ratio {latest_cr:.2f} < 1.0 (liabilities exceed current assets)"
+        reason    = f"current ratio {latest_cr:.2f} < 1.0 (liabilities exceed current assets)"
+        reason_pt = f"índice de liquidez corrente {latest_cr:.2f} < 1,0 (passivos superam os ativos circulantes)"
     elif latest_cr < 1.2:
         severity = "MEDIUM"
-        reason = f"current ratio {latest_cr:.2f} < 1.2 (approaching stress zone)"
+        reason    = f"current ratio {latest_cr:.2f} < 1.2 (approaching stress zone)"
+        reason_pt = f"índice de liquidez corrente {latest_cr:.2f} < 1,2 (aproximando-se da zona de estresse)"
     elif len(cr) >= 2 and (cr[0] - cr[-1]) > 0.3:
         severity = "MEDIUM"
-        reason = f"current ratio declined {cr[0] - cr[-1]:.2f} over analysis period"
+        reason    = f"current ratio declined {cr[0] - cr[-1]:.2f} over analysis period"
+        reason_pt = f"índice de liquidez corrente caiu {cr[0] - cr[-1]:.2f} ao longo do período de análise"
 
     if severity is None and qr_vals:
         _, qr = zip(*qr_vals)
         if qr[-1] < 0.8 and latest_cr >= 1.0:
             severity = "MEDIUM"
-            reason = f"quick ratio {qr[-1]:.2f} < 0.8 while current ratio looks adequate (inventory masking)"
+            reason    = f"quick ratio {qr[-1]:.2f} < 0.8 while current ratio looks adequate (inventory masking)"
+            reason_pt = f"liquidez seca {qr[-1]:.2f} < 0,8 enquanto o índice corrente parece adequado (estoque mascarando)"
 
     if severity is None:
         return findings
@@ -233,8 +249,48 @@ def _check_liquidity_stress(series: list, company: str) -> list:
         "trend_direction":  "deteriorating" if (len(cr) >= 2 and cr[-1] < cr[0]) else "stable",
         "materiality_brl":  wc_val,
         "description":      f"{company}: {reason}.",
+        "description_pt":   f"{company}: {reason_pt}.",
         "insight":          f"{company}: {reason}.",
     })
+
+    # Consecutive current_ratio decline streak (from most recent backward)
+    cr_list = list(cr)
+    streak = 0
+    for i in range(len(cr_list) - 1, 0, -1):
+        if cr_list[i] < cr_list[i - 1]:
+            streak += 1
+        else:
+            break
+    if streak >= 3:
+        findings.append({
+            "code":           "BS_LIQUIDITY_STRESS_STREAK",
+            "module":         "balance_sheet_health",
+            "pattern":        "Persistent liquidity deterioration",
+            "severity":       "HIGH",
+            "category":       "Core",
+            "company":        company,
+            "metric_name":    "current_ratio",
+            "consecutive_decline_periods": streak,
+            "from_value":     round(cr_list[-(streak + 1)], 3),
+            "to_value":       round(cr_list[-1], 3),
+            "periods_affected": list(periods_cr[-(streak + 1):]),
+            "trend_direction": "deteriorating",
+            "description": (
+                f"{company}: Current ratio declined for {streak} consecutive periods "
+                f"(from {cr_list[-(streak+1)]:.2f} to {cr_list[-1]:.2f}). "
+                f"Persistent liquidity deterioration."
+            ),
+            "description_pt": (
+                f"{company}: Índice de liquidez corrente caiu por {streak} períodos consecutivos "
+                f"(de {cr_list[-(streak+1)]:.2f} para {cr_list[-1]:.2f}). "
+                f"Deterioração persistente de liquidez."
+            ),
+            "insight": (
+                f"{company}: Current ratio declined for {streak} consecutive periods "
+                f"(from {cr_list[-(streak+1)]:.2f} to {cr_list[-1]:.2f})."
+            ),
+        })
+
     return findings
 
 
@@ -297,8 +353,54 @@ def _check_asset_efficiency(series: list, company: str) -> list:
             f"{company}: Asset efficiency weakening — "
             + "; ".join(signals) + "."
         ),
+        "description_pt": (
+            f"{company}: Eficiência de ativos deteriorando — "
+            + "; ".join(signals) + "."
+        ),
         "insight": f"{company}: " + "; ".join(signals),
     })
+
+    # Consecutive ROA decline streak (from most recent backward)
+    if roa_vals and len(roa_vals) >= 3:
+        _, roa_list = zip(*roa_vals)
+        roa_list = list(roa_list)
+        roa_streak = 0
+        for i in range(len(roa_list) - 1, 0, -1):
+            if roa_list[i] < roa_list[i - 1]:
+                roa_streak += 1
+            else:
+                break
+        if roa_streak >= 3:
+            roa_periods = [p for p, _ in roa_vals]
+            findings.append({
+                "code":           "BS_ASSET_EFFICIENCY_STREAK",
+                "module":         "balance_sheet_health",
+                "pattern":        "Sustained asset efficiency decline",
+                "severity":       "MEDIUM",
+                "category":       "Supporting",
+                "company":        company,
+                "metric_name":    "return_on_assets",
+                "consecutive_decline_periods": roa_streak,
+                "from_value":     round(roa_list[-(roa_streak + 1)], 2),
+                "to_value":       round(roa_list[-1], 2),
+                "periods_affected": roa_periods[-(roa_streak + 1):],
+                "trend_direction": "deteriorating",
+                "description": (
+                    f"{company}: ROA declined for {roa_streak} consecutive periods "
+                    f"(from {roa_list[-(roa_streak+1)]:.1f}% to {roa_list[-1]:.1f}%). "
+                    f"Sustained asset efficiency decline."
+                ),
+                "description_pt": (
+                    f"{company}: ROA caiu por {roa_streak} períodos consecutivos "
+                    f"(de {roa_list[-(roa_streak+1)]:.1f}% para {roa_list[-1]:.1f}%). "
+                    f"Declínio sustentado de eficiência de ativos."
+                ),
+                "insight": (
+                    f"{company}: ROA declined for {roa_streak} consecutive periods "
+                    f"(from {roa_list[-(roa_streak+1)]:.1f}% to {roa_list[-1]:.1f}%)."
+                ),
+            })
+
     return findings
 
 
@@ -361,6 +463,10 @@ def _check_ccc_expansion(series: list, company: str) -> list:
             f"{company}: Cash conversion cycle expanded {delta:+.0f} days "
             f"({ccc[0]:.0f}d → {ccc[-1]:.0f}d), primarily driven by {driver}."
         ),
+        "description_pt": (
+            f"{company}: Ciclo de conversão de caixa expandiu {delta:+.0f} dias "
+            f"({ccc[0]:.0f}d → {ccc[-1]:.0f}d), principalmente impulsionado por {driver}."
+        ),
         "insight": f"{company}: CCC {ccc[0]:.0f}d → {ccc[-1]:.0f}d ({delta:+.0f}d).",
     })
     return findings
@@ -396,16 +502,20 @@ def _check_debt_maturity(series: list, company: str) -> list:
 
     severity = None
     reason = ""
+    reason_pt = ""
     if latest_ratio > 0.6:
-        severity = "HIGH"
-        reason = f"short-term debt is {latest_ratio*100:.0f}% of total debt"
+        severity  = "HIGH"
+        reason    = f"short-term debt is {latest_ratio*100:.0f}% of total debt"
+        reason_pt = f"dívida de curto prazo representa {latest_ratio*100:.0f}% da dívida total"
     elif latest_ratio > 0.4:
-        severity = "MEDIUM"
-        reason = f"short-term debt is {latest_ratio*100:.0f}% of total debt (>40%)"
+        severity  = "MEDIUM"
+        reason    = f"short-term debt is {latest_ratio*100:.0f}% of total debt (>40%)"
+        reason_pt = f"dívida de curto prazo representa {latest_ratio*100:.0f}% da dívida total (>40%)"
     elif len(ratios) >= 2 and (ratios[-1] - ratios[0]) > 0.15:
         severity = "MEDIUM"
-        delta_pp = (ratios[-1] - ratios[0]) * 100
-        reason = f"short-term share increased {delta_pp:.0f}pp over period"
+        delta_pp  = (ratios[-1] - ratios[0]) * 100
+        reason    = f"short-term share increased {delta_pp:.0f}pp over period"
+        reason_pt = f"participação de curto prazo aumentou {delta_pp:.0f}pp ao longo do período"
 
     if severity is None:
         return findings
@@ -426,6 +536,7 @@ def _check_debt_maturity(series: list, company: str) -> list:
         "trend_direction":  "deteriorating" if (len(ratios) >= 2 and ratios[-1] > ratios[0]) else "stable",
         "materiality_brl":  latest_std,
         "description":      f"{company}: {reason}. Refinancing risk is elevated.",
+        "description_pt":   f"{company}: {reason_pt}. Risco de refinanciamento elevado.",
         "insight":          f"{company}: {reason}.",
     })
     return findings
@@ -448,17 +559,21 @@ def _check_equity_erosion(series: list, company: str) -> list:
 
     severity = None
     reason = ""
+    reason_pt = ""
     if latest_eq < 0:
-        severity = "CRITICAL"
-        reason = f"total equity negative ({_fmtbrl(latest_eq)}) — technically insolvent"
+        severity  = "CRITICAL"
+        reason    = f"total equity negative ({_fmtbrl(latest_eq)}) — technically insolvent"
+        reason_pt = f"patrimônio líquido negativo ({_fmtbrl(latest_eq)}) — tecnicamente insolvente"
     elif first_eq and first_eq > 0:
         chg_pct = (latest_eq - first_eq) / abs(first_eq) * 100
         if chg_pct < -40:
-            severity = "HIGH"
-            reason = f"equity declined {abs(chg_pct):.0f}% over analysis period"
+            severity  = "HIGH"
+            reason    = f"equity declined {abs(chg_pct):.0f}% over analysis period"
+            reason_pt = f"patrimônio líquido caiu {abs(chg_pct):.0f}% ao longo do período de análise"
         elif chg_pct < -20:
-            severity = "MEDIUM"
-            reason = f"equity declined {abs(chg_pct):.0f}% over analysis period"
+            severity  = "MEDIUM"
+            reason    = f"equity declined {abs(chg_pct):.0f}% over analysis period"
+            reason_pt = f"patrimônio líquido caiu {abs(chg_pct):.0f}% ao longo do período de análise"
 
     if severity is None:
         return findings
@@ -482,9 +597,193 @@ def _check_equity_erosion(series: list, company: str) -> list:
         "trend_direction":  "deteriorating" if latest_eq < first_eq else "improving",
         "materiality_brl":  equity_change,
         "description":      f"{company}: {reason}.",
+        "description_pt":   f"{company}: {reason_pt}.",
         "insight":          f"{company}: {reason}.",
     })
     return findings
+
+
+# =============================================================================
+# BS-8: DEBT_MATURITY_WALL (FRE-based)
+# =============================================================================
+
+def _check_fre_maturity_wall(foreign_bonds: list, company: str) -> list:
+    """Detect dangerous near-term concentration of foreign bond maturities.
+
+    Input: list of ForeignBondObligation dicts from fre_parser.parse_fre_foreign_bonds().
+    Returns [] when called with an empty list (graceful degradation).
+    """
+    if not foreign_bonds:
+        return []
+
+    from datetime import date as _date
+
+    today = _date.today()
+    total = sum(b.get("outstanding_amount", 0) or 0 for b in foreign_bonds)
+    if total <= 0:
+        return []
+
+    buckets = {"<1yr": 0.0, "1-2yr": 0.0, "2-3yr": 0.0, "3-5yr": 0.0, ">5yr": 0.0, "Indet": 0.0}
+    maturity_year_counts: dict[str, float] = {}
+
+    for b in foreign_bonds:
+        amt = b.get("outstanding_amount", 0) or 0
+        mat = b.get("maturity_date", "Indeterminado")
+        if mat == "Indeterminado":
+            buckets["Indet"] += amt
+            continue
+        try:
+            mat_date = _date.fromisoformat(mat[:10])
+            years_to = (mat_date - today).days / 365.25
+            yr_str = str(mat_date.year)
+            maturity_year_counts[yr_str] = maturity_year_counts.get(yr_str, 0) + amt
+            if years_to < 1:
+                buckets["<1yr"] += amt
+            elif years_to < 2:
+                buckets["1-2yr"] += amt
+            elif years_to < 3:
+                buckets["2-3yr"] += amt
+            elif years_to < 5:
+                buckets["3-5yr"] += amt
+            else:
+                buckets[">5yr"] += amt
+        except Exception:
+            buckets["Indet"] += amt
+
+    near_term = buckets["<1yr"] + buckets["1-2yr"]
+    near_term_pct = near_term / total * 100
+
+    # Largest single-year concentration
+    largest_yr = max(maturity_year_counts, key=lambda k: maturity_year_counts[k], default=None)
+    largest_yr_pct = (maturity_year_counts[largest_yr] / total * 100) if largest_yr else 0.0
+
+    findings = []
+
+    # Near-term concentration trigger
+    severity = None
+    if near_term_pct > 50:
+        severity = "HIGH"
+    elif near_term_pct > 35:
+        severity = "MEDIUM"
+    elif largest_yr_pct > 30:
+        severity = "HIGH"
+
+    if severity:
+        bucket_pcts = {k: round(v / total * 100, 1) for k, v in buckets.items()}
+        period = foreign_bonds[0].get("period", "") if foreign_bonds else ""
+        desc = (
+            f"{company}: {near_term_pct:.0f}% of foreign bond debt "
+            f"({_fmtbrl(near_term)}) matures within 2 years. "
+            f"Refinancing concentration risk (FRE foreign bonds only)."
+        )
+        desc_pt = (
+            f"{company}: {near_term_pct:.0f}% da dívida em títulos externos "
+            f"({_fmtbrl(near_term)}) vence em 2 anos. "
+            f"Risco de concentração de refinanciamento (apenas títulos externos do FRE)."
+        )
+        findings.append({
+            "code":              "BS_MATURITY_WALL",
+            "module":            "balance_sheet_health",
+            "pattern":           "Foreign debt maturity wall",
+            "severity":          severity,
+            "category":          "Core",
+            "company":           company,
+            "metric_name":       "near_term_foreign_debt_pct",
+            "metric_values": {
+                "near_term_pct":     round(near_term_pct, 1),
+                "near_term_amount":  near_term,
+                "total_foreign_debt": total,
+                "bucket_pcts":       bucket_pcts,
+                "largest_single_year":     largest_yr,
+                "largest_single_year_pct": round(largest_yr_pct, 1),
+            },
+            "period":            period,
+            "periods_affected":  [period],
+            "trend_direction":   "deteriorating",
+            "materiality_brl":   near_term,
+            "description":       desc,
+            "description_pt":    desc_pt,
+            "insight":           f"{company}: {near_term_pct:.0f}% of foreign bonds mature within 2 years.",
+        })
+
+    return findings
+
+
+# =============================================================================
+# BS-9: FX_DEBT_CONCENTRATION (FRE-based)
+# =============================================================================
+
+def _check_fre_fx_concentration(
+    foreign_bonds: list, company: str, bs_total_debt: float | None = None
+) -> list:
+    """Detect excessive foreign-currency debt exposure.
+
+    All titulo_exterior bonds are treated as USD-denominated (no Moeda column present).
+    fx_pct is computed relative to bs_total_debt when provided; otherwise the finding
+    is informational (MEDIUM) reporting the absolute amount.
+
+    Returns [] when called with an empty list (graceful degradation).
+    """
+    if not foreign_bonds:
+        return []
+
+    fx_total = sum(b.get("outstanding_amount", 0) or 0 for b in foreign_bonds)
+    if fx_total <= 0:
+        return []
+
+    period             = foreign_bonds[0].get("period", "") if foreign_bonds else ""
+    currency_breakdown = {"USD": round(fx_total, 0)}
+
+    # Compute severity using spec thresholds when total debt is known
+    if bs_total_debt and bs_total_debt > 0:
+        fx_pct = fx_total / bs_total_debt * 100
+        if fx_pct > 50:
+            severity = "HIGH"
+        elif fx_pct > 30:
+            severity = "MEDIUM"
+        else:
+            severity = "LOW"
+        fx_pct_str = f"{fx_pct:.0f}%"
+    else:
+        # No total debt available — report amount only
+        fx_pct     = None
+        severity   = "MEDIUM"
+        fx_pct_str = "unknown % of total"
+
+    desc = (
+        f"{company}: {_fmtbrl(fx_total)} in USD-denominated foreign bonds "
+        f"({fx_pct_str} of total debt, {len(foreign_bonds)} instruments). "
+        f"Direct FX exposure to BRL depreciation."
+    )
+    desc_pt = (
+        f"{company}: {_fmtbrl(fx_total)} em títulos externos denominados em USD "
+        f"({fx_pct_str} da dívida total, {len(foreign_bonds)} instrumentos). "
+        f"Exposição cambial direta à depreciação do BRL."
+    )
+
+    return [{
+        "code":          "BS_FX_DEBT_CONCENTRATION",
+        "module":        "balance_sheet_health",
+        "pattern":       "Foreign currency debt exposure",
+        "severity":      severity,
+        "category":      "Supporting",
+        "company":       company,
+        "metric_name":   "fx_debt_pct",
+        "metric_values": {
+            "fx_amount":          fx_total,
+            "fx_pct":             round(fx_pct, 1) if fx_pct is not None else None,
+            "currency_breakdown": currency_breakdown,
+            "dominant_currency":  "USD",
+            "bond_count":         len(foreign_bonds),
+        },
+        "period":           period,
+        "periods_affected": [period],
+        "trend_direction":  "deteriorating",
+        "materiality_brl":  fx_total,
+        "description":    desc,
+        "description_pt": desc_pt,
+        "insight": f"{company}: {_fmtbrl(fx_total)} USD-denominated foreign bonds ({fx_pct_str} of total debt).",
+    }]
 
 
 # =============================================================================
@@ -504,4 +803,25 @@ def detect_bs_patterns(bs_series: list, company_name: str) -> list:
     findings += _check_ccc_expansion(bs_series, company_name)
     findings += _check_debt_maturity(bs_series, company_name)
     findings += _check_equity_erosion(bs_series, company_name)
+    return findings
+
+
+def detect_bs_fre_patterns(
+    foreign_bonds: list, company_name: str, bs_total_debt: float | None = None
+) -> list:
+    """Run FRE-based BS algorithms (BS-8, BS-9). Returns list of finding dicts.
+
+    Separate from detect_bs_patterns() so FRE findings are only added
+    when FRE data is available. Returns [] when foreign_bonds is empty.
+
+    Args:
+        foreign_bonds:  Output of parse_fre_foreign_bonds().
+        company_name:   Company name string.
+        bs_total_debt:  Balance sheet total debt (BRL thousands) for BS-9 fx_pct
+                        computation. When None, BS-9 reports the absolute amount
+                        as MEDIUM without threshold-based severity.
+    """
+    findings = []
+    findings += _check_fre_maturity_wall(foreign_bonds, company_name)
+    findings += _check_fre_fx_concentration(foreign_bonds, company_name, bs_total_debt=bs_total_debt)
     return findings

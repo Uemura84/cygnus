@@ -34,13 +34,13 @@ export default function RunStepButton({ step }) {
         style={{
           padding: '10px 24px',
           borderRadius: '8px',
-          background: isRunning ? 'rgba(30,144,255,0.5)' : 'var(--blue)',
+          background: isRunning ? 'rgba(14,143,154,0.5)' : 'var(--teal)',
           color: '#fff',
           border: 'none',
           cursor: isRunning ? 'not-allowed' : 'pointer',
           fontWeight: 600,
           fontSize: '0.9rem',
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: "'IBM Plex Sans', sans-serif",
           transition: 'background 0.15s',
         }}
       >

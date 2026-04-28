@@ -1,13 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 80" width="280" height="80">
-  <!-- Cygnus Logomark — Primary (dark background) -->
-  <!-- Accretion disk mark -->
-  <g transform="translate(40, 40)">
-    <ellipse cx="0" cy="0" rx="28" ry="9" fill="none" stroke="#1e90ff" stroke-width="0.8" opacity="0.12"/>
-    <ellipse cx="0" cy="0" rx="21" ry="7" fill="none" stroke="#1e90ff" stroke-width="0.9" opacity="0.22"/>
-    <ellipse cx="0" cy="0" rx="14" ry="4.8" fill="none" stroke="#1e90ff" stroke-width="1.1" opacity="0.38"/>
-    <circle cx="0" cy="0" r="5.5" fill="#1e90ff"/>
-    <circle cx="0" cy="0" r="2.2" fill="#0b1f3a"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 88" width="320" height="88" role="img" aria-label="Cygnus logo">
+  
+  <g transform="translate(0, 0)">
+    <path d="M 64 22 A 30 30 0 1 0 64 66" fill="none" stroke="#5fb9c0" stroke-width="8" stroke-linecap="round"></path>
+    <circle cx="68" cy="44" r="5.2" fill="#eef2f7"></circle>
+    <rect x="46" y="36" width="10" height="2.4" fill="#5fb9c0" opacity="0.40"></rect>
+    <rect x="42" y="42" width="16" height="2.4" fill="#5fb9c0" opacity="0.65"></rect>
+    <rect x="38" y="48" width="22" height="2.4" fill="#5fb9c0" opacity="1"></rect>
   </g>
-  <!-- Wordmark -->
-  <text x="84" y="46" font-family="'DM Sans', 'Helvetica Neue', sans-serif" font-size="22" font-weight="500" letter-spacing="3.5" fill="#ffffff">CYGNUS</text>
+  
+  <text x="108" y="52" font-family="IBM Plex Mono, &#39;SF Mono&#39;, Menlo, monospace" font-size="22" font-weight="500" letter-spacing="3.6" fill="#eef2f7">CYGNUS</text>
 </svg>

@@ -183,6 +183,10 @@ def analyze_margin_trends(df: pd.DataFrame, periods_per_year: int = 4) -> list:
             # Flag significant trends
             if abs(annual_change) > 2:  # More than 2pp per year
                 direction = "compression" if annual_change < 0 else "expansion"
+                direction_pt = "compressão" if annual_change < 0 else "expansão"
+                metric_label = margin_col.replace('_pct', '')
+                _urgent_en = 'This rate is unsustainable and warrants investigation.' if abs(annual_change) > 5 else 'Monitor closely.'
+                _urgent_pt = 'Essa taxa é insustentável e requer investigação.' if abs(annual_change) > 5 else 'Monitorar de perto.'
                 findings.append({
                     "company": company,
                     "metric": margin_col,
@@ -193,16 +197,24 @@ def analyze_margin_trends(df: pd.DataFrame, periods_per_year: int = 4) -> list:
                     "periods_analyzed": len(series),
                     "severity": "HIGH" if abs(annual_change) > 5 else "MEDIUM",
                     "insight": (
-                        f"{company}: {margin_col.replace('_pct', '')} shows "
+                        f"{company}: {metric_label} shows "
                         f"{direction} of {abs(annual_change):.1f}pp/year. "
                         f"Current: {series.iloc[-1]:.1f}%, "
                         f"Historical avg: {historical_avg:.1f}%. "
-                        f"{'This rate is unsustainable and warrants investigation.' if abs(annual_change) > 5 else 'Monitor closely.'}"
-                    )
+                        f"{_urgent_en}"
+                    ),
+                    "description_pt": (
+                        f"{company}: {metric_label} apresenta {direction_pt} de "
+                        f"{abs(annual_change):.1f}pp/ano. "
+                        f"Atual: {series.iloc[-1]:.1f}%, "
+                        f"Média histórica: {historical_avg:.1f}%. "
+                        f"{_urgent_pt}"
+                    ),
                 })
 
             # Flag high volatility
             if volatility > 5:
+                metric_label = margin_col.replace('_pct', '')
                 findings.append({
                     "company": company,
                     "metric": margin_col,
@@ -213,12 +225,58 @@ def analyze_margin_trends(df: pd.DataFrame, periods_per_year: int = 4) -> list:
                     "range": round(series.max() - series.min(), 2),
                     "severity": "MEDIUM",
                     "insight": (
-                        f"{company}: {margin_col.replace('_pct', '')} swings "
+                        f"{company}: {metric_label} swings "
                         f"from {series.min():.1f}% to {series.max():.1f}% "
                         f"(range: {series.max() - series.min():.1f}pp). "
                         f"High volatility suggests exposure to commodity cycles "
                         f"or pricing power issues."
-                    )
+                    ),
+                    "description_pt": (
+                        f"{company}: {metric_label} oscila de {series.min():.1f}% a "
+                        f"{series.max():.1f}% (amplitude: {series.max() - series.min():.1f}pp). "
+                        f"Alta volatilidade sugere exposição a ciclos de commodities "
+                        f"ou problemas de poder de precificação."
+                    ),
+                })
+
+            # Consecutive decline streak (from most recent backward)
+            vals = series.values
+            streak = 0
+            for i in range(len(vals) - 1, 0, -1):
+                if vals[i] < vals[i - 1]:
+                    streak += 1
+                else:
+                    break
+
+            if streak >= 3:
+                metric_label = margin_col.replace('_pct', '')
+                decline_start_idx = len(vals) - 1 - streak
+                try:
+                    decline_start_year = str(series.index[decline_start_idx])[:4]
+                except Exception:
+                    decline_start_year = ""
+                total_decline_pp = float(vals[decline_start_idx] - vals[-1])
+                streak_severity = "HIGH" if streak >= 4 else "MEDIUM"
+                streak_label_en = "Persistent" if streak >= 4 else "Sustained"
+                streak_label_pt = "Persistente" if streak >= 4 else "Contínua"
+                findings.append({
+                    "company": company,
+                    "metric": margin_col,
+                    "pattern": f"Persistent margin decline" if streak >= 4 else "Sustained margin decline",
+                    "consecutive_decline_periods": streak,
+                    "decline_start_year": decline_start_year,
+                    "total_decline_pp": round(total_decline_pp, 2),
+                    "severity": streak_severity,
+                    "insight": (
+                        f"{company}: {metric_label} declined for {streak} consecutive years "
+                        f"(−{total_decline_pp:.1f}pp total since {decline_start_year}). "
+                        f"Persistent structural deterioration."
+                    ),
+                    "description_pt": (
+                        f"{company}: {metric_label} caiu por {streak} anos consecutivos "
+                        f"(−{total_decline_pp:.1f}pp no total desde {decline_start_year}). "
+                        f"Deterioração estrutural persistente."
+                    ),
                 })
 
     return findings
@@ -258,21 +316,42 @@ def analyze_cost_drift(df: pd.DataFrame) -> list:
             shift = second_half - first_half
 
             if abs(shift) > 3:  # More than 3pp shift
-                econ_label = "deterioration" if shift > 0 else "improvement"
+                is_deterioration = shift > 0
+                econ_label    = "deterioration" if is_deterioration else "improvement"
+                econ_label_pt = "deterioração"  if is_deterioration else "melhora"
+                _cogs_cause_en  = "input costs, product mix, or operational efficiency"
+                _cogs_cause_pt  = "custos de insumos, mix de produtos ou eficiência operacional"
+                _other_cause_en = "organizational structure or cost allocation methodology"
+                _other_cause_pt = "estrutura organizacional ou metodologia de alocação de custos"
+                cause_en = _cogs_cause_en  if name == "COGS" else _other_cause_en
+                cause_pt = _cogs_cause_pt  if name == "COGS" else _other_cause_pt
+
+                # Direction-aware severity: improvements are demoted one level
+                base_severity = "HIGH" if abs(shift) > 5 else "MEDIUM"
+                if is_deterioration:
+                    severity = base_severity
+                else:
+                    severity = "MEDIUM" if base_severity == "HIGH" else "LOW"
+
                 findings.append({
                     "company": company,
                     "metric": col,
                     "pattern": "Cost composition drift",
+                    "direction": "deteriorating" if is_deterioration else "improving",
                     "first_half_avg": round(first_half, 2),
                     "second_half_avg": round(second_half, 2),
                     "shift_pp": round(shift, 2),
-                    "severity": "HIGH" if abs(shift) > 5 else "MEDIUM",
+                    "severity": severity,
                     "insight": (
                         f"{company}: {name} burden shifted from {first_half:.1f}% to "
                         f"{second_half:.1f}% of revenue — a {abs(shift):.1f}pp {econ_label}. "
-                        f"This structural shift may indicate changes in "
-                        f"{'input costs, product mix, or operational efficiency' if name == 'COGS' else 'organizational structure or cost allocation methodology'}."
-                    )
+                        f"This structural shift may indicate changes in {cause_en}."
+                    ),
+                    "description_pt": (
+                        f"{company}: {name} variou de {first_half:.1f}% para "
+                        f"{second_half:.1f}% da receita — uma {econ_label_pt} de {abs(shift):.1f}pp. "
+                        f"Essa mudança estrutural pode indicar alterações em {cause_pt}."
+                    ),
                 })
 
         # Check for cost transfer between categories
@@ -302,7 +381,14 @@ def analyze_cost_drift(df: pd.DataFrame) -> list:
                                     f"costs may be shifting between categories. "
                                     f"This could indicate accounting reclassification "
                                     f"or genuine operational changes worth investigating."
-                                )
+                                ),
+                                "description_pt": (
+                                    f"{company}: {name1} e {name2} apresentam forte correlação "
+                                    f"negativa ({corr:.2f}), sugerindo que os custos podem estar "
+                                    f"sendo transferidos entre categorias. Isso pode indicar "
+                                    f"reclassificação contábil ou mudanças operacionais genuínas "
+                                    f"que merecem investigação."
+                                ),
                             })
 
     return findings
@@ -354,6 +440,8 @@ def analyze_revenue_cost_decoupling(df: pd.DataFrame) -> list:
                     rev_chg  = rev_pct_change.iloc[idx] * 100
                     cogs_chg = cogs_pct_change.iloc[idx] * 100
 
+                    _pressure_en = "COGS grew faster than revenue (margin pressure)" if delta[idx] > 0 else "Revenue outpaced COGS (margin expansion)"
+                    _pressure_pt = "CPV cresceu mais que a receita (pressão de margem)" if delta[idx] > 0 else "Receita superou o CPV (expansão de margem)"
                     findings.append({
                         "company": company,
                         "pattern": "Revenue-cost decoupling",
@@ -366,115 +454,54 @@ def analyze_revenue_cost_decoupling(df: pd.DataFrame) -> list:
                             f"{company} ({date}): Revenue changed {rev_chg:+.1f}% "
                             f"but COGS changed {cogs_chg:+.1f}% — "
                             f"a {abs(delta[idx]):.1f}pp divergence. "
-                            f"{'COGS grew faster than revenue (margin pressure)' if delta[idx] > 0 else 'Revenue outpaced COGS (margin expansion)'}. "
+                            f"{_pressure_en}. "
                             f"Investigate: product mix shift, input cost changes, "
                             f"or one-time items."
-                        )
+                        ),
+                        "description_pt": (
+                            f"{company} ({date}): Receita variou {rev_chg:+.1f}% "
+                            f"enquanto o CPV variou {cogs_chg:+.1f}% — "
+                            f"uma divergência de {abs(delta[idx]):.1f}pp. "
+                            f"{_pressure_pt}. "
+                            f"Investigar: mudança no mix de produtos, variação nos custos de "
+                            f"insumos ou itens extraordinários."
+                        ),
                     })
 
     return findings
 
 
 # =============================================================================
-# Pattern 4: Cross-Company Comparison (sector-aware)
+# Pattern 4: (removed — peer comparison with n=2 produces more noise than signal)
 # =============================================================================
 
-def analyze_peer_comparison(df: pd.DataFrame, sector_map: dict = None) -> list:
-    """Compare financial metrics across companies in the same sector."""
-    findings = []
+# Placeholder kept for historical reference; function is not called from detect_patterns.
+def _analyze_peer_comparison_removed(df: pd.DataFrame, sector_map: dict = None) -> list:  # noqa: F401
+    """Removed: cross-company comparison with typical n=2 produces z-scores of ±0.71
+    regardless of gap size, making sector sector groupings unreliable.
+    """
+    return []
 
-    metric_cols = ["Gross_Margin_pct", "EBIT_Margin_pct", "COGS_pct_Revenue", "SGA_pct_Revenue"]
-    available_metrics = [col for col in metric_cols if col in df.columns]
 
-    if not available_metrics or df["company_id"].nunique() < 2:
-        return findings
+def _unused_get_sector(company_name: str, sector_map: dict) -> str:
+    """Helper kept for internal reference; not called."""
+    if sector_map:
+        for fragment, sector in sector_map.items():
+            if fragment.upper() in company_name.upper():
+                return sector
+    return "All"
 
-    # Get latest period for each company
-    latest = df.sort_values("period_date").groupby("company_id").tail(1).copy()
 
-    # Assign sector labels
-    def _get_sector(company_name: str) -> str:
-        if sector_map:
-            for fragment, sector in sector_map.items():
-                if fragment.upper() in company_name.upper():
-                    return sector
-        return "All"
+def _unused_peer_block_removed() -> list:  # noqa: F401
+    """Stub placeholder — old peer comparison logic removed in Change 1.
 
-    latest["_sector"] = latest["company_id"].apply(_get_sector)
-
-    for sector_name, sector_df in latest.groupby("_sector"):
-        if len(sector_df) < 2:
-            continue
-
-        for metric in available_metrics:
-            values = sector_df[["company_id", metric]].dropna()
-            if len(values) < 2:
-                continue
-
-            # n=2: z-score is always ±0.71 (ddof=1) regardless of gap size — use absolute gap
-            if len(values) == 2:
-                threshold = 10.0 if "Margin" in metric else 15.0
-                gap = abs(values[metric].iloc[0] - values[metric].iloc[1])
-                if gap > threshold:
-                    if "Margin" in metric:
-                        worse_idx  = values[metric].idxmin()
-                        better_idx = values[metric].idxmax()
-                        verb = "trails"
-                    else:
-                        worse_idx  = values[metric].idxmax()
-                        better_idx = values[metric].idxmin()
-                        verb = "exceeds"
-                    worse_row  = values.loc[worse_idx]
-                    better_row = values.loc[better_idx]
-                    finding = {
-                        "company":       worse_row["company_id"],
-                        "metric":        metric,
-                        "pattern":       "Peer divergence",
-                        "company_value": round(worse_row[metric], 2),
-                        "peer_value":    round(better_row[metric], 2),
-                        "gap_pp":        round(gap, 2),
-                        "severity":      "HIGH" if gap > (20.0 if "Margin" in metric else 25.0) else "MEDIUM",
-                        "insight": (
-                            f"{worse_row['company_id']}: {metric.replace('_pct', '')} "
-                            f"({worse_row[metric]:.1f}%) {verb} "
-                            f"{better_row['company_id']} ({better_row[metric]:.1f}%) "
-                            f"by {gap:.1f}pp."
-                        ),
-                    }
-                    if sector_map:
-                        finding["sector"] = sector_name
-                    findings.append(finding)
-                continue  # skip z-score path for n=2
-
-            mean_val = values[metric].mean()
-            std_val  = values[metric].std()
-
-            for _, row in values.iterrows():
-                if std_val > 0:
-                    z_score = (row[metric] - mean_val) / std_val
-                    if abs(z_score) > 1:
-                        position = "above" if z_score > 0 else "below"
-                        finding = {
-                            "company":      row["company_id"],
-                            "metric":       metric,
-                            "pattern":      "Peer divergence",
-                            "company_value": round(row[metric], 2),
-                            "peer_average": round(mean_val, 2),
-                            "z_score":      round(z_score, 2),
-                            "severity":     "HIGH" if abs(z_score) > 2 else "MEDIUM",
-                            "insight": (
-                                f"{row['company_id']}: {metric.replace('_pct', '')} "
-                                f"at {row[metric]:.1f}% is significantly {position} "
-                                f"the {sector_name} peer average of {mean_val:.1f}% "
-                                f"(z-score: {z_score:+.1f}). "
-                                f"{'This could indicate superior operational efficiency or different business model.' if position == 'above' and 'Margin' in metric else 'Investigate structural disadvantages or strategic positioning differences.'}"
-                            )
-                        }
-                        if sector_map:
-                            finding["sector"] = sector_name
-                        findings.append(finding)
-
-    return findings
+    The old function body included:
+        - n=2 absolute gap comparisons with threshold 10pp (margins) / 15pp (costs)
+        - n≥3 z-score comparisons flagging |z| > 1
+    Removed because n=2 always produces z=±0.71, making severity thresholds meaningless,
+    and CVM sector groupings mix fundamentally different business models.
+    """
+    return []
 
 
 # =============================================================================
@@ -527,6 +554,8 @@ def detect_anomalies(df: pd.DataFrame) -> list:
                 # Note: _enrich_findings_with_dq() will overwrite anomaly_type using the
                 # full DQ rules (plausibility thresholds, peer confirmation, row-level context)
 
+                _period_str = row.get('period_date', row.get('DT_REFER', ''))
+                _metric_label = metric.replace('_pct', '')
                 findings.append({
                     "company":        company,
                     "metric":         metric,
@@ -538,12 +567,19 @@ def detect_anomalies(df: pd.DataFrame) -> list:
                     "confidence_score": confidence_score,
                     "severity":       "HIGH",
                     "insight": (
-                        f"{company} ({row.get('period_date', row.get('DT_REFER', ''))}): {metric.replace('_pct', '')} "
+                        f"{company} ({_period_str}): {_metric_label} "
                         f"at {value:.1f}% is outside the normal range "
                         f"({lower:.1f}% to {upper:.1f}%). "
                         f"Investigate one-time items, impairments, or "
                         f"extraordinary events in this period."
-                    )
+                    ),
+                    "description_pt": (
+                        f"{company} ({_period_str}): {_metric_label} "
+                        f"em {value:.1f}% está fora do intervalo normal "
+                        f"({lower:.1f}% a {upper:.1f}%). "
+                        f"Investigar itens extraordinários, impairments ou "
+                        f"eventos excepcionais neste período."
+                    ),
                 })
 
     return findings
@@ -594,7 +630,9 @@ def analyze_yoy_comparison(
 
                 for _, row in q_data.dropna(subset=["yoy_change"]).iterrows():
                     if abs(row["yoy_change"]) > 15:  # 15pp threshold for commodity sectors
-                        direction = "improved" if row["yoy_change"] > 0 else "deteriorated"
+                        direction    = "improved"  if row["yoy_change"] > 0 else "deteriorated"
+                        direction_pt = "melhorou" if row["yoy_change"] > 0 else "deteriorou"
+                        _metric_label = metric.replace('_pct', '')
                         company_metric_findings.append({
                             "company":       company,
                             "metric":        metric,
@@ -604,13 +642,21 @@ def analyze_yoy_comparison(
                             "current_value": round(row[metric], 2),
                             "severity":      "HIGH" if abs(row["yoy_change"]) > 25 else "MEDIUM",
                             "insight": (
-                                f"{company}: {metric.replace('_pct', '')} in "
+                                f"{company}: {_metric_label} in "
                                 f"Q{quarter} {int(row['year'])} {direction} by "
                                 f"{abs(row['yoy_change']):.1f}pp vs "
                                 f"Q{quarter} {int(row['year']) - 1} "
                                 f"(now {row[metric]:.1f}%). "
                                 f"Same-quarter comparison controls for seasonality."
-                            )
+                            ),
+                            "description_pt": (
+                                f"{company}: {_metric_label} no "
+                                f"T{quarter} {int(row['year'])} {direction_pt} "
+                                f"{abs(row['yoy_change']):.1f}pp vs "
+                                f"T{quarter} {int(row['year']) - 1} "
+                                f"(atual: {row[metric]:.1f}%). "
+                                f"Comparação no mesmo trimestre controla a sazonalidade."
+                            ),
                         })
 
             # Keep only the most extreme swings per company+metric
@@ -663,16 +709,6 @@ def _add_confidence_scores(findings: list) -> list:
         if pattern in THRESHOLDS:
             key, base = THRESHOLDS[pattern]
             ratio = abs(f.get(key, 0) or 0) / base
-        elif pattern == "Peer divergence":
-            gap = f.get("gap_pp")
-            z   = f.get("z_score")
-            if gap is not None:
-                base  = 10.0 if "Margin" in f.get("metric", "") else 15.0
-                ratio = gap / base
-            elif z is not None:
-                ratio = abs(z)   # detection threshold is 1.0
-            else:
-                ratio = 1.0
         elif pattern == "Potential cost reclassification":
             ratio = abs(f.get("correlation", 0)) / 0.5   # base threshold is -0.5
         else:
@@ -905,14 +941,16 @@ def detect_patterns(
     df: pd.DataFrame,
     df_annual: pd.DataFrame,
     df_quarterly: pd.DataFrame,
-    sector_map: dict = None,
+    sector_map: dict = None,  # kept for backward-compat; unused after Algorithm 4 removal
 ) -> list:
-    """Run all 6 pattern detection algorithms and return findings list (Step 6).
+    """Run pattern detection algorithms and return findings list (Step 6).
 
     The df must already have _row_confidence and is_standalone columns
     (run quality_scan first).
 
     Applies all post-processing: dedup, confidence scores, macro context, DQ enrichment.
+
+    Note: Algorithm 4 (Peer Comparison) was removed — see _analyze_peer_comparison_removed.
     """
     all_findings = []
 
@@ -928,9 +966,7 @@ def detect_patterns(
     p3 = analyze_revenue_cost_decoupling(df_annual)
     all_findings.extend(_cap_company_findings(p3, 2, "divergence_pp"))
 
-    # Pattern 4: Peer Comparison (sector-based, latest period, full df)
-    p4 = analyze_peer_comparison(df, sector_map=sector_map)
-    all_findings.extend(_cap_company_findings(p4, 5, "gap_pp"))
+    # Pattern 4: Peer Comparison — removed (see _analyze_peer_comparison_removed)
 
     # Pattern 5: Anomaly Detection (quarterly data)
     p5 = detect_anomalies(df_quarterly)

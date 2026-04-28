@@ -1,0 +1,68 @@
+{
+  "company": {
+    "name": "SYNTHETIC S1 — O1 override test",
+    "sector_id": "DEFAULT"
+  },
+  "_purpose": "Validates that O1 override (G01 + G02) forces band to Distress when pre-override score would have been Watchlist. Without this test, a broken O1 implementation could pass all real-company fixtures (Braskem scores 100 even without override).",
+  "analysis_window": {
+    "latest_annual_period": "2025-12-31",
+    "annual_periods": ["2022", "2023", "2024", "2025"]
+  },
+  "gating_inputs": {
+    "G01_negative_equity": {
+      "fires": true,
+      "closing_equity_brl_b": -0.5,
+      "period": "2025-12-31",
+      "_note": "Mild negative equity — just tipped below zero"
+    },
+    "G02_going_concern": {
+      "fires": true,
+      "auditor": "Synthetic Auditor LLP",
+      "period": "2025-12-31",
+      "emphasis_topics": "Negative equity position and uncertainty regarding refinancing"
+    },
+    "G03_persistent_liquidity_stress": {
+      "fires": false,
+      "current_ratio_history": [
+        { "period": "2024", "value": 1.15 },
+        { "period": "2025", "value": 1.20 }
+      ],
+      "reason_not_fired": "Current ratio >= 1.0 in both periods"
+    },
+    "G04_distributing_while_insolvent": {
+      "fires": false,
+      "reason_not_fired": "No dividends declared during analysis window"
+    },
+    "G05_financing_dependence_for_payouts": {
+      "fires": false,
+      "reason_not_fired": "No dividends paid; no payout dependence to test"
+    },
+    "G06_technical_insolvency_trajectory": {
+      "fires": false,
+      "equity_trajectory_brl_b": [2.0, 1.5, 0.8, -0.5],
+      "reason_not_fired": "3 declining periods but window only covers the decline; opening-to-closing ratio does not cross 50% threshold within the ≥3 period window definition"
+    }
+  },
+  "fundamentals_inputs": {
+    "latest_annual_period": "2025-12-31",
+    "ebit_margin_pct":        8.0,
+    "free_cash_flow_brl_b_latest": 1.2,
+    "fcf_last_3_years": [
+      { "period": "2023", "fcf_brl_b": 2.0 },
+      { "period": "2024", "fcf_brl_b": 1.5 },
+      { "period": "2025", "fcf_brl_b": 1.2 }
+    ],
+    "debt_to_ebitda": 2.0,
+    "current_ratio":   1.20
+  },
+  "findings": [],
+  "_expected_math": {
+    "gating": "G01 (25) + G02 (25) = 50",
+    "fundamentals": "profitability 5 (8% EBIT in 0-10 band) + cash_gen 0 (FCF positive) + leverage 0 (2x below half of 5x default threshold = 2.5x) + liquidity 3 (ratio 1.20 in 1.0-1.5 band) = 8",
+    "signals": "no findings = 0",
+    "pre_override_total": "50 + 8 + 0 = 58",
+    "pre_override_band": "Watchlist (40-60 band)",
+    "override": "O1 fires (G01 + G02) — score forced to max(58, 80) = 80, band forced to Distress",
+    "final": "Score 80, Band Distress"
+  }
+}

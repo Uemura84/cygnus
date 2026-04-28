@@ -39,15 +39,19 @@ def _check_earnings_quality(series: list, company: str) -> list:
 
     severity = None
     reason = ""
+    reason_pt = ""
     if latest < 0.5:
-        severity = "HIGH"
-        reason = f"OCF/NI ratio {latest:.2f} — less than half of earnings converting to cash"
+        severity  = "HIGH"
+        reason    = f"OCF/NI ratio {latest:.2f} — less than half of earnings converting to cash"
+        reason_pt = f"índice FCO/LL {latest:.2f} — menos da metade do lucro se converte em caixa"
     elif latest < 0.8:
-        severity = "MEDIUM"
-        reason = f"OCF/NI ratio {latest:.2f} — earnings-to-cash conversion below threshold"
+        severity  = "MEDIUM"
+        reason    = f"OCF/NI ratio {latest:.2f} — earnings-to-cash conversion below threshold"
+        reason_pt = f"índice FCO/LL {latest:.2f} — conversão de lucro em caixa abaixo do limite"
     elif len(ratios) >= 2 and (ratios[0] - latest) > 0.3:
-        severity = "MEDIUM"
-        reason = f"OCF/NI ratio declining {ratios[0]:.2f} → {latest:.2f}"
+        severity  = "MEDIUM"
+        reason    = f"OCF/NI ratio declining {ratios[0]:.2f} → {latest:.2f}"
+        reason_pt = f"índice FCO/LL caindo {ratios[0]:.2f} → {latest:.2f}"
 
     # Sign divergence check
     if severity is None:
@@ -59,8 +63,9 @@ def _check_earnings_quality(series: list, company: str) -> list:
                 ni_proxy = ocf_latest / ratio
         if ocf_latest is not None and ni_proxy is not None:
             if (ocf_latest > 0) != (ni_proxy > 0):
-                severity = "HIGH"
-                reason = "OCF and net income have opposite signs (sign divergence)"
+                severity  = "HIGH"
+                reason    = "OCF and net income have opposite signs (sign divergence)"
+                reason_pt = "FCO e lucro líquido têm sinais opostos (divergência de sinais)"
 
     if severity is None:
         return findings
@@ -85,6 +90,7 @@ def _check_earnings_quality(series: list, company: str) -> list:
         "trend_direction":  "deteriorating" if (len(ratios) >= 2 and latest < ratios[0]) else "stable",
         "materiality_brl":  mat,
         "description":      f"{company}: {reason}.",
+        "description_pt":   f"{company}: {reason_pt}.",
         "insight":          f"{company}: {reason}.",
     })
     return findings
@@ -110,15 +116,19 @@ def _check_capex_starvation(series: list, company: str) -> list:
 
     severity = None
     reason = ""
+    reason_pt = ""
     if latest < 0.5:
-        severity = "HIGH"
-        reason = f"capex/D&A {latest:.2f} — spending less than half of depreciation rate"
+        severity  = "HIGH"
+        reason    = f"capex/D&A {latest:.2f} — spending less than half of depreciation rate"
+        reason_pt = f"capex/D&A {latest:.2f} — investindo menos da metade da taxa de depreciação"
     elif latest < 0.8:
-        severity = "MEDIUM"
-        reason = f"capex/D&A {latest:.2f} — below replacement rate"
+        severity  = "MEDIUM"
+        reason    = f"capex/D&A {latest:.2f} — below replacement rate"
+        reason_pt = f"capex/D&A {latest:.2f} — abaixo da taxa de reposição"
     elif sum(1 for r in ratios if r < 1.0) >= 3:
-        severity = "MEDIUM"
-        reason = "capex/D&A < 1.0 for 3+ consecutive periods (sustained harvest mode)"
+        severity  = "MEDIUM"
+        reason    = "capex/D&A < 1.0 for 3+ consecutive periods (sustained harvest mode)"
+        reason_pt = "capex/D&A < 1,0 por 3+ períodos consecutivos (modo de colheita sustentado)"
 
     # Revenue trend trigger
     if severity is None and rev_vals and len(rev_vals) >= 2:
@@ -126,8 +136,9 @@ def _check_capex_starvation(series: list, company: str) -> list:
         if rv[0] and rv[0] > 0:
             capex_decline_pct = (rv[-1] - rv[0]) / rv[0] * 100
             if capex_decline_pct < -30:
-                severity = "MEDIUM"
-                reason = f"capex/revenue declining {abs(capex_decline_pct):.0f}% over period"
+                severity  = "MEDIUM"
+                reason    = f"capex/revenue declining {abs(capex_decline_pct):.0f}% over period"
+                reason_pt = f"capex/receita caindo {abs(capex_decline_pct):.0f}% ao longo do período"
 
     if severity is None:
         return findings
@@ -158,6 +169,7 @@ def _check_capex_starvation(series: list, company: str) -> list:
         "trend_direction":  "deteriorating",
         "materiality_brl":  mat,
         "description":      f"{company}: {reason}. Asset base may be shrinking in real terms.",
+        "description_pt":   f"{company}: {reason_pt}. A base de ativos pode estar encolhendo em termos reais.",
         "insight":          f"{company}: {reason}.",
     })
     return findings
@@ -188,20 +200,25 @@ def _check_fcf_erosion(series: list, company: str) -> list:
 
     severity = None
     reason = ""
+    reason_pt = ""
     if neg_streak >= 3:
-        severity = "HIGH"
-        reason = f"FCF negative for {neg_streak} consecutive periods"
+        severity  = "HIGH"
+        reason    = f"FCF negative for {neg_streak} consecutive periods"
+        reason_pt = f"FCL negativo por {neg_streak} períodos consecutivos"
     elif neg_streak >= 2:
-        severity = "MEDIUM"
-        reason = f"FCF negative for {neg_streak} consecutive periods"
+        severity  = "MEDIUM"
+        reason    = f"FCF negative for {neg_streak} consecutive periods"
+        reason_pt = f"FCL negativo por {neg_streak} períodos consecutivos"
     elif fcf[0] > 0 > latest:
-        severity = "MEDIUM"
-        reason = f"FCF turned negative (was {fcf[0]:,.0f}K, now {latest:,.0f}K)"
+        severity  = "MEDIUM"
+        reason    = f"FCF turned negative (was {fcf[0]:,.0f}K, now {latest:,.0f}K)"
+        reason_pt = f"FCL ficou negativo (era {fcf[0]:,.0f}K, agora {latest:,.0f}K)"
     elif len(fcf) >= 2 and fcf[0] > 0 and latest > 0:
         decline_pct = (latest - fcf[0]) / abs(fcf[0]) * 100
         if decline_pct < -50:
-            severity = "MEDIUM"
-            reason = f"FCF declined {abs(decline_pct):.0f}% over analysis period"
+            severity  = "MEDIUM"
+            reason    = f"FCF declined {abs(decline_pct):.0f}% over analysis period"
+            reason_pt = f"FCL caiu {abs(decline_pct):.0f}% ao longo do período de análise"
 
     if severity is None:
         return findings
@@ -223,6 +240,7 @@ def _check_fcf_erosion(series: list, company: str) -> list:
         "trend_direction":  "deteriorating" if latest < 0 else "stable",
         "materiality_brl":  latest,
         "description":      f"{company}: {reason}.",
+        "description_pt":   f"{company}: {reason_pt}.",
         "insight":          f"{company}: {reason}.",
     })
     return findings
@@ -264,8 +282,9 @@ def _check_debt_dependency(series: list, company: str) -> list:
         if di_exceeds < 3:
             return findings
 
-    severity = "MEDIUM"
-    reason = f"financing CF positive for {pos_streak} consecutive periods"
+    severity  = "MEDIUM"
+    reason    = f"financing CF positive for {pos_streak} consecutive periods"
+    reason_pt = f"FCF de financiamento positivo por {pos_streak} períodos consecutivos"
 
     # Escalate if OCF also insufficient
     if pos_streak >= 3:
@@ -274,8 +293,9 @@ def _check_debt_dependency(series: list, company: str) -> list:
             if fv > 0 and (ocf_map.get(p, 0) or 0) < 0
         )
         if ocf_neg_while_fin_pos >= 2:
-            severity = "HIGH"
-            reason += " while OCF is negative (borrowing to survive)"
+            severity   = "HIGH"
+            reason    += " while OCF is negative (borrowing to survive)"
+            reason_pt += " enquanto o FCO é negativo (captando dívida para sobreviver)"
 
     # Materiality: cumulative net borrowing
     cum_fin = sum(v for v in fin if v > 0)
@@ -296,6 +316,7 @@ def _check_debt_dependency(series: list, company: str) -> list:
         "trend_direction":  "deteriorating",
         "materiality_brl":  cum_fin,
         "description":      f"{company}: {reason}.",
+        "description_pt":   f"{company}: {reason_pt}.",
         "insight":          f"{company}: {reason}.",
     })
     return findings
@@ -354,6 +375,10 @@ def _check_dividend_sustainability(series: list, company: str) -> list:
         "description": (
             f"{company}: Dividends exceeded FCF in {over_count} periods"
             + (f"; paid while FCF negative {neg_fcf_with_div}×" if neg_fcf_with_div else "") + "."
+        ),
+        "description_pt": (
+            f"{company}: Dividendos superaram o FCL em {over_count} períodos"
+            + (f"; pagos com FCL negativo em {neg_fcf_with_div} período(s)" if neg_fcf_with_div else "") + "."
         ),
         "insight": (
             f"{company}: Dividends exceeded FCF {over_count}× — unsustainable payout."
@@ -423,6 +448,10 @@ def _check_wc_cash_drain(series: list, company: str) -> list:
         "description": (
             f"{company}: Working capital change is negative for {neg_from_end} consecutive periods, "
             f"absorbing operating cash flow."
+        ),
+        "description_pt": (
+            f"{company}: Variação do capital de giro é negativa por {neg_from_end} períodos consecutivos, "
+            f"consumindo o fluxo de caixa operacional."
         ),
         "insight": (
             f"{company}: WC change negative {neg_from_end} consecutive periods."

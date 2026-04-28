@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n, useAppState, useAppDispatch } from '../App'
 import MarkdownView from '../components/MarkdownView'
+import Step7TransparencyPanel from '../components/Step7TransparencyPanel'
 import styles from './Step.module.css'
 
 // ── Confidence badge ──────────────────────────────────────────────────────────
@@ -28,10 +29,10 @@ function CollapseToggle({ label, labelOpen, children, defaultOpen = false }) {
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          color: 'var(--blue)',
+          color: 'var(--teal)',
           fontSize: '0.78rem',
           fontWeight: 600,
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: "'IBM Plex Mono', monospace",
           padding: '4px 0',
           marginTop: '8px',
         }}
@@ -40,7 +41,7 @@ function CollapseToggle({ label, labelOpen, children, defaultOpen = false }) {
         {open ? (labelOpen ?? label) : label}
       </button>
       {open && (
-        <div style={{ marginTop: '8px', paddingLeft: '16px', borderLeft: '2px solid rgba(30,144,255,0.15)' }}>
+        <div style={{ marginTop: '8px', paddingLeft: '16px', borderLeft: '2px solid rgba(14,143,154,0.15)' }}>
           {children}
         </div>
       )}
@@ -53,8 +54,8 @@ function CollapseToggle({ label, labelOpen, children, defaultOpen = false }) {
 function HypothesisCard({ hyp, t, isTop = false }) {
   return (
     <div style={{
-      background: isTop ? 'rgba(30,144,255,0.04)' : '#fff',
-      border: `1px solid ${isTop ? 'rgba(30,144,255,0.18)' : 'rgba(11,31,58,0.06)'}`,
+      background: isTop ? 'rgba(14,143,154,0.04)' : '#fff',
+      border: `1px solid ${isTop ? 'rgba(14,143,154,0.18)' : 'rgba(11,31,58,0.06)'}`,
       borderRadius: '6px',
       padding: '12px 14px',
       marginBottom: isTop ? '0' : '8px',
@@ -98,8 +99,8 @@ function FindingGroupCard({ group, t }) {
         <span style={{
           fontSize: '0.68rem',
           fontWeight: 500,
-          color: 'var(--blue)',
-          fontFamily: "'JetBrains Mono', monospace",
+          color: 'var(--teal)',
+          fontFamily: "'IBM Plex Mono', monospace",
           textTransform: 'uppercase',
           letterSpacing: '0.1em',
           marginRight: '10px',
@@ -115,8 +116,8 @@ function FindingGroupCard({ group, t }) {
       <div style={{
         fontSize: '0.65rem',
         fontWeight: 600,
-        color: 'var(--blue)',
-        fontFamily: "'JetBrains Mono', monospace",
+        color: 'var(--teal)',
+        fontFamily: "'IBM Plex Mono', monospace",
         textTransform: 'uppercase',
         letterSpacing: '0.12em',
         marginBottom: '6px',
@@ -233,7 +234,7 @@ function CrossModuleSection({ crossData, t }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                 <span style={{
                   fontSize: '0.65rem',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "'IBM Plex Mono', monospace",
                   color: '#E24B4A',
                   fontWeight: 600,
                 }}>
@@ -376,6 +377,7 @@ export default function Step7AIAgent({ stepState, data }) {
 
   const [rawText,    setRawText]    = useState('')
   const [parsedData, setParsedData] = useState(null)
+  const [sections,   setSections]   = useState({})
   const [parseError, setParseError] = useState(false)
   const [status,     setStatus]     = useState('idle') // idle | connecting | streaming | parsing | done | error
   const [payload,    setPayload]    = useState(null)
@@ -383,6 +385,17 @@ export default function Step7AIAgent({ stepState, data }) {
 
   const isStreaming = status === 'connecting' || status === 'streaming'
   const progressMsg = useProgressMessages(t, isStreaming)
+
+  // Partial parsed object assembled from sections during streaming
+  const partialParsed = isStreaming && Object.keys(sections).length > 0 ? {
+    macro_context: sections.macro_context ?? null,
+    modules: {
+      profitability: sections.profitability ?? null,
+      balance_sheet: sections.balance_sheet ?? null,
+      cash_flow:     sections.cash_flow ?? null,
+      cross_module:  sections.cross_module ?? null,
+    },
+  } : null
 
   const step6Data = appState.stepData[6]?.data ?? {}
 
@@ -392,6 +405,7 @@ export default function Step7AIAgent({ stepState, data }) {
 
     setRawText('')
     setParsedData(null)
+    setSections({})
     setParseError(false)
     setStatus('connecting')
 
@@ -399,7 +413,8 @@ export default function Step7AIAgent({ stepState, data }) {
     const ws = new WebSocket(`${protocol}://${window.location.host}/ws/llm`)
     wsRef.current = ws
 
-    let accumulated = ''
+    // Plain object in closure — avoids stale-closure issues with setState
+    const sectionsAccum = {}
 
     ws.onopen = () => {
       setStatus('streaming')
@@ -408,26 +423,30 @@ export default function Step7AIAgent({ stepState, data }) {
 
     ws.onmessage = (e) => {
       if (e.data === '[DONE]') {
-        setStatus('parsing')
         ws.close()
-
-        const parsed = tryParseJSON(accumulated)
-
-        if (parsed) {
-          setParsedData(parsed)
-          setParseError(false)
-        } else {
-          setRawText(accumulated)
-          setParseError(true)
+        // Assemble full parsed object from accumulated sections
+        const assembled = {
+          macro_context: sectionsAccum.macro_context ?? {},
+          modules: {
+            profitability: sectionsAccum.profitability ?? {},
+            balance_sheet: sectionsAccum.balance_sheet ?? {},
+            cash_flow:     sectionsAccum.cash_flow ?? {},
+            cross_module:  sectionsAccum.cross_module ?? {},
+          },
         }
+        if (sectionsAccum.transparency) {
+          assembled.transparency = sectionsAccum.transparency
+        }
+        setParsedData(assembled)
+        setParseError(false)
         setStatus('done')
-
+        const responseText = JSON.stringify(assembled)
         dispatch({
           type: 'SET_STEP_COMPLETE',
           step: 7,
           data: {
             status: 'complete',
-            data: { response_text: accumulated, status: 'complete' },
+            data: { response_text: responseText, status: 'complete' },
             metadata: { source: 'websocket' },
           },
         })
@@ -438,7 +457,16 @@ export default function Step7AIAgent({ stepState, data }) {
         ws.close()
         return
       }
-      accumulated += e.data
+      // Parse section message
+      try {
+        const msg = JSON.parse(e.data)
+        if (msg.__section && msg.data) {
+          sectionsAccum[msg.__section] = msg.data
+          setSections({ ...sectionsAccum })
+        }
+      } catch (_) {
+        // Fallback: treat as raw text (shouldn't happen with new protocol)
+      }
     }
 
     ws.onerror = () => setStatus('error')
@@ -478,7 +506,8 @@ export default function Step7AIAgent({ stepState, data }) {
 
   const hasFindingsContext = !!step6Data.findings?.length
   const showConsultButton = status === 'idle' || status === 'error'
-  const showResults = status === 'done'
+  const showResults = status === 'done' || (isStreaming && partialParsed !== null)
+  const displayData = parsedData ?? partialParsed
 
   return (
     <div className={styles.wrapper}>
@@ -494,13 +523,13 @@ export default function Step7AIAgent({ stepState, data }) {
             style={{
               padding: '10px 24px',
               borderRadius: '8px',
-              background: hasFindingsContext ? 'var(--blue)' : 'rgba(11,31,58,0.06)',
+              background: hasFindingsContext ? 'var(--teal)' : 'rgba(11,31,58,0.06)',
               color: hasFindingsContext ? '#fff' : 'var(--gray)',
               border: 'none',
               cursor: hasFindingsContext ? 'pointer' : 'not-allowed',
               fontWeight: 600,
               fontSize: '0.9rem',
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "'IBM Plex Sans', sans-serif",
             }}
           >
             {t.run_button}
@@ -523,8 +552,8 @@ export default function Step7AIAgent({ stepState, data }) {
         <div style={{
           marginBottom: '20px',
           padding: '12px 16px',
-          background: 'rgba(30,144,255,0.04)',
-          border: '1px solid rgba(30,144,255,0.12)',
+          background: 'rgba(14,143,154,0.04)',
+          border: '1px solid rgba(14,143,154,0.12)',
           borderRadius: '6px',
         }}>
           <div className={styles.running} style={{ fontSize: '0.82rem' }}>
@@ -536,7 +565,7 @@ export default function Step7AIAgent({ stepState, data }) {
       {/* Done status row */}
       {status === 'done' && !showConsultButton && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '0.78rem' }}>
-          <span style={{ color: 'var(--blue)', fontFamily: "'JetBrains Mono', monospace" }}>✓ Complete</span>
+          <span style={{ color: 'var(--teal)', fontFamily: "'IBM Plex Mono', monospace" }}>✓ Complete</span>
           {parseError && (
             <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>— {t.fallback_note}</span>
           )}
@@ -547,8 +576,8 @@ export default function Step7AIAgent({ stepState, data }) {
       {/* Results */}
       {showResults && (
         <>
-          {parsedData ? (
-            <TieredBriefing parsed={parsedData} t={t} />
+          {displayData ? (
+            <TieredBriefing parsed={displayData} t={t} />
           ) : (
             <div style={{
               background: 'var(--offwhite)',
@@ -574,6 +603,12 @@ export default function Step7AIAgent({ stepState, data }) {
           }}>
             {t.ai_disclaimer}
           </p>
+
+          {/* Transparency panel */}
+          <Step7TransparencyPanel
+            transparency={displayData?.transparency}
+            t={t}
+          />
         </>
       )}
     </div>

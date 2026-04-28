@@ -17,14 +17,14 @@ export default function MarginTrajectory({ data, labels = {} }) {
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={data} margin={{ top: 8, right: 64, bottom: 8, left: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(11,31,58,0.06)" />
-        <XAxis dataKey="period" tick={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }} />
+        <XAxis dataKey="period" tick={{ fontSize: 11, fontFamily: "'IBM Plex Mono', monospace" }} />
 
         {/* Left axis: Gross + EBIT Margin */}
         <YAxis
           yAxisId="margins"
           unit="%"
           domain={[-10, 40]}
-          tick={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
+          tick={{ fontSize: 11, fontFamily: "'IBM Plex Mono', monospace" }}
           tickCount={6}
         />
         {/* Right axis: COGS / Revenue */}
@@ -33,7 +33,7 @@ export default function MarginTrajectory({ data, labels = {} }) {
           orientation="right"
           unit="%"
           domain={[60, 100]}
-          tick={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}
+          tick={{ fontSize: 11, fontFamily: "'IBM Plex Mono', monospace" }}
           tickCount={5}
         />
 
@@ -60,7 +60,7 @@ export default function MarginTrajectory({ data, labels = {} }) {
           type="monotone"
           dataKey="Gross_Margin_pct"
           name={labels.grossMargin ?? 'Gross Margin %'}
-          stroke="#1e90ff"
+          stroke="#2E86C1"
           strokeWidth={2}
           dot={{ r: 3 }}
         />
@@ -69,7 +69,7 @@ export default function MarginTrajectory({ data, labels = {} }) {
           type="monotone"
           dataKey="EBIT_Margin_pct"
           name={labels.ebitMargin ?? 'EBIT Margin %'}
-          stroke="rgba(30,144,255,0.55)"
+          stroke="rgba(46,134,193,0.55)"
           strokeWidth={2}
           dot={{ r: 3 }}
         />
@@ -78,7 +78,7 @@ export default function MarginTrajectory({ data, labels = {} }) {
           type="monotone"
           dataKey="COGS_pct_Revenue"
           name={labels.cogsRevenue ?? 'COGS / Revenue %'}
-          stroke="#E24B4A"
+          stroke="rgba(192,57,43,0.65)"
           strokeWidth={2.5}
           dot={{ r: 3 }}
         />

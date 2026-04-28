@@ -1,15 +1,15 @@
-# Decision Intelligence for CFOs — Product Vision & Core Architecture
+# Cygnus — Product Vision & Core Architecture
 
-> **What this is:** The foundational architecture document for evolving the CVM Demo App
-> into a source-agnostic financial signal detection and decision intelligence platform.
-> Defines the common financial data model, the adapter pattern, the analysis module
-> system, and the signal stacking engine.
+> **What this is:** The foundational architecture document for the Cygnus financial
+> signal detection and decision intelligence platform. Defines the product vision,
+> the 9-step pipeline, the analysis module system, the distress scoring engine,
+> the reasoning engine, and the source adapter architecture.
 >
-> **This is a DESIGN document, not a build spec.** It establishes the architecture that
-> all future development should follow. Individual build specs (Phase 3, 4, 5) reference
-> this document for the data contracts.
+> **This is a DESIGN document.** It reflects the current implemented state plus
+> the planned evolution. Individual build specs reference this document for
+> data contracts and architectural decisions.
 >
-> **Last updated:** April 2, 2026
+> **Last updated:** April 27, 2026
 
 ---
 
@@ -18,7 +18,8 @@
 **What we're building:** A financial signal detection and decision intelligence
 platform for CFOs and senior finance leaders. It ingests financial data from any
 source, detects value leakage signals, stacks and combines them into a diagnosis,
-quantifies the economic impact, and maps the path from findings to decisions.
+scores financial distress, quantifies the economic impact, and maps the path from
+findings to decisions.
 
 **What this is NOT:** This is not another BI dashboard, FP&A tool, or financial
 reporting platform. CFOs already have more metrics than they know what to do with.
@@ -33,11 +34,11 @@ The gap isn't between data and analysis — it's between analysis and action.
 **Core insight:** The value chain has four layers:
 - Layer 1: Data → Metrics (what ERP and BI tools do)
 - Layer 2: Metrics → Signals (what detection algorithms do)
-- Layer 3: Signals → Diagnosis (what signal stacking + AI agent + domain expertise do)
+- Layer 3: Signals → Diagnosis (what signal stacking + distress scoring + AI agent + domain expertise do)
 - Layer 4: Diagnosis → Decisions (what the consulting engagement delivers)
 
-Most tools stop at Layer 1 or 2. This product operates at Layers 2-3 and bridges
-to Layer 4. Individual signals are evidence. Stacked signals are a diagnosis.
+Most tools stop at Layer 1 or 2. Cygnus operates at Layers 2-3 and bridges to Layer 4.
+Individual signals are evidence. Stacked signals are a diagnosis.
 The product presents the diagnosis, not just the evidence.
 
 **Value proposition:** "We found R$9 billion of margin pressure in your financial
@@ -62,85 +63,48 @@ the hypothesis layer.
 
 ---
 
-## 2. Architecture: Three Layers
+## 2. Architecture: The 9-Step Pipeline
 
 ### Layer 1: Source Adapters (Steps 1-3)
 
-Each data source has its own adapter that handles:
-- **Step 1 — Ingest:** Download, connect, or receive data from the source
-- **Step 2 — Clean:** Apply source-specific filters, handle encoding, resolve duplicates
-- **Step 3 — Map:** Transform source-specific schemas into the Common Financial Data Model
+Each data source has its own adapter that handles ingestion, cleaning, and
+transformation into the Common Financial Data Model.
+
+- **Step 1 — Download:** Fetch data from source (CVM portal ZIP files, SEC EDGAR, ERP export)
+- **Step 2 — Quality Filters:** Source-specific cleaning, deduplication, encoding normalization
+- **Step 3 — Statement Mapping:** Transform source schemas into common model; parse IS, BS, CF, DVA, DMPL, DRA statements
 
 Adapters are independent modules. Adding a new data source means writing a new adapter —
 it does NOT require changes to the analysis engine.
 
-**Current adapter:** CVM (Brazilian Securities Commission)
+**Current adapter:** CVM (Brazilian Securities Commission) — fully implemented
 **Planned adapters:** SEC EDGAR (US), ERP Extract (SAP FI/CO, Oracle), Manual Upload (CSV/Excel)
 
-### Layer 2: Common Financial Data Model
+### Layer 2: Analysis Engine (Steps 4-6)
 
-The contract between adapters and the analysis engine. Defined in detail in Section 3.
+Source-agnostic modules that operate on the common financial data model:
 
-This model standardizes:
-- Account taxonomy (what is revenue, COGS, SG&A, etc.)
-- Period representation (annual, quarterly, monthly)
-- Currency and unit handling
-- Company and segment identification
+- **Step 4 — Financial Metrics:** Compute derived metrics (margins, ratios, bridges, period changes). LLM-generated chart interpretations and section headlines (language-keyed sidecar cache).
+- **Step 5 — Quality Scan:** Validate data ranges, flag anomalies, auditor assessment, assign confidence scores
+- **Step 6 — Core Analysis:** Pattern detection across 5 modules (profitability, balance sheet, cash flow, auditor, equity), signal stacking, reasoning engine, distress scoring engine
 
-### Layer 3: Analysis Engine (Steps 4-9)
+### Layer 3: AI Intelligence (Steps 7-9)
 
-Source-agnostic modules that operate on the common model:
-- **Step 4 — Metrics:** Compute derived metrics (margins, ratios, period changes)
-- **Step 5 — Quality:** Validate data ranges, flag anomalies, assign confidence
-- **Step 6 — Detection:** Run pattern detection algorithms + risk scoring
-- **Step 7 — AI Agent:** Generate hypotheses and context
-- **Step 8 — Summary:** Executive narrative synthesis
-- **Step 9 — Q&A:** Open conversation with AI agent
+- **Step 7 — AI Industry Specialist:** 5 parallel Claude API calls (macro_context, profitability, balance_sheet, cash_flow, cross_module). Prompt engineering with severity authority, anti-hedging rules, dominant-stance enforcement, CFO lens. Reasoning engine output injected into cross_module call.
+- **Step 8 — Executive Summary:** Claude-generated narrative synthesis (what_happened, how_serious, when_things_turned, what_comes_next, what_we_cant_answer)
+- **Step 9 — Ask the Specialist:** Open-ended Q&A conversation via WebSocket streaming
 
 ### AI Agent Capabilities (Steps 7, 8, 9)
 
-The AI agent is not limited to generating text. It should be able to produce
-**mixed-media output** — text, charts, diagrams, and structured data — as part
-of its reasoning. It should also be able to use **any available LLM tool or skill**
-when necessary to enhance its analysis.
+The AI agent produces **mixed-media output** — text, charts, diagrams, and structured data.
+It can embed structured chart data within its text responses, which the frontend parses
+and renders as interactive Recharts visualizations inline.
 
-**Visual output (charts and diagrams):**
-
-The AI agent can embed structured chart data within its text responses, which
-the frontend parses and renders as interactive visualizations inline. This is
-critical because financial analysis is inherently visual — a CFO understands
-a chart faster than a paragraph.
-
-Use cases for AI-generated visuals:
-- Overlay hypothetical scenarios on actual data (e.g., "what if naphtha cost
-  had tracked gas-based feedstock instead?")
-- Show the relative magnitude of different factors as a waterfall chart
-- Illustrate causal chains as flow diagrams (Mermaid syntax)
-- Compare what-if scenarios side by side
-- Visualize the timeline of events and their cascading impact
-- Show sensitivity analysis (how much does each hypothesis explain?)
-
-Implementation approach: The AI agent outputs structured JSON blocks
-(```json:chart) within its markdown response. The frontend MarkdownView
-component detects these blocks and renders them as Recharts or Mermaid
-components. Chart types: line, bar, waterfall, comparison, and flow diagrams.
-
-**LLM tool and skill use:**
-
-The AI agent should have access to any available tools or skills that enhance
-its analysis. This includes but is not limited to:
-- **Web search** — to retrieve current commodity prices, exchange rates, recent
-  news about the company, industry reports, or regulatory changes
-- **Document retrieval** — to reference specific CVM filings, explanatory notes,
-  or earnings call transcripts when available
-- **Calculation tools** — to perform complex financial computations, scenario
-  modeling, or sensitivity analysis on the fly
-- **Data lookup** — to cross-reference findings with external benchmarks,
-  industry averages, or historical comparisons
-
-The principle: the AI agent should be empowered to use whatever resources it
-needs to produce the most insightful analysis possible. The specific tools
-available will depend on the deployment context and integrations configured.
+The AI agent has access to tools that enhance analysis:
+- **Web search** — current commodity prices, exchange rates, company news
+- **Document retrieval** — CVM filings, explanatory notes
+- **Calculation tools** — scenario modeling, sensitivity analysis
+- **Data lookup** — external benchmarks, industry averages
 
 ---
 
@@ -148,17 +112,11 @@ available will depend on the deployment context and integrations configured.
 
 ### 3.1 Design Principles
 
-1. **Minimal but sufficient.** Include only accounts that the analysis engine actually
-   uses. Don't model the entire chart of accounts.
-2. **Source-agnostic naming.** Use English-language standard names, not source-specific
-   codes (not CVM's CD_CONTA, not SAP's GL account numbers).
-3. **Absolute values + derived ratios.** Store both the raw BRL/USD amounts AND the
-   computed percentages. The materiality layer needs absolutes; the pattern detection
-   needs ratios.
-4. **Period-flexible.** Support annual, quarterly, and monthly granularity. Not all
-   sources provide all granularities.
-5. **Nullable fields.** Not every source provides every account. Missing data is None,
-   not zero. The analysis engine handles gaps gracefully.
+1. **Minimal but sufficient.** Include only accounts that the analysis engine actually uses.
+2. **Source-agnostic naming.** English-language standard names, not source-specific codes.
+3. **Absolute values + derived ratios.** Store both raw BRL/USD amounts AND computed percentages.
+4. **Period-flexible.** Support annual, quarterly, and monthly granularity.
+5. **Nullable fields.** Missing data is None, not zero. The analysis engine handles gaps gracefully.
 
 ### 3.2 Core Tables
 
@@ -171,21 +129,8 @@ company:
   source: str                # data source identifier ("cvm", "sec", "erp", "manual")
   country: str               # ISO country code ("BR", "US")
   currency: str              # reporting currency ("BRL", "USD")
-  sector: str | None         # sector classification if known
+  sector: str | None         # sector classification (27 sectors + In Bankruptcy/Unclassified)
   sector_source: str         # "mapped" | "inferred" | "unknown"
-```
-
-#### Period
-
-```
-period:
-  date: date                 # period end date (2025-12-31)
-  granularity: str           # "annual" | "quarterly" | "monthly"
-  fiscal_year: int           # 2025
-  fiscal_quarter: int | None # 1-4 for quarterly, None for annual
-  fiscal_month: int | None   # 1-12 for monthly, None otherwise
-  is_standalone: bool        # True = standalone period, False = YTD cumulative
-  filing_type: str | None    # Source-specific: "DFP", "ITR", "10-K", "10-Q", etc.
 ```
 
 #### Income Statement
@@ -196,802 +141,449 @@ income_statement:
   period: Period
 
   # Revenue
-  revenue: float | None              # Net revenue (BRL/USD)
-  cost_of_goods_sold: float | None   # COGS (positive = cost, stored as absolute value)
-  gross_profit: float | None         # Revenue - COGS
+  revenue: float | None
+  cost_of_goods_sold: float | None
+  gross_profit: float | None
 
   # Operating expenses
-  sga_expenses: float | None         # Selling, General & Administrative
-  selling_expenses: float | None     # Selling only (subset of SGA if available)
-  general_admin: float | None        # G&A only (subset of SGA if available)
-  other_operating: float | None      # Other operating income/expenses
+  sga_expenses: float | None
+  selling_expenses: float | None
+  general_admin: float | None
+  other_operating: float | None
 
   # Operating profit
-  ebit: float | None                 # Earnings Before Interest and Taxes
-  depreciation_amortization: float | None  # D&A (from income statement or cash flow)
-  ebitda: float | None               # EBIT + D&A
+  ebit: float | None
+  depreciation_amortization: float | None
+  ebitda: float | None
 
   # Below the line
-  financial_result: float | None     # Net financial income/expense
+  financial_result: float | None
   income_before_tax: float | None
   income_tax: float | None
   net_income: float | None
 
-  # Derived ratios (computed by Step 4, not stored by adapter)
-  gross_margin_pct: float | None
-  ebit_margin_pct: float | None
-  ebitda_margin_pct: float | None
-  cogs_pct_revenue: float | None
-  sga_pct_revenue: float | None
+  # Derived ratios (computed by Step 4)
+  gross_margin_pct, ebit_margin_pct, ebitda_margin_pct,
+  cogs_pct_revenue, sga_pct_revenue
 ```
 
 #### Balance Sheet
 
 ```
 balance_sheet:
-  company_id: str
-  period: Period
-
   # Assets
-  total_assets: float | None
-  current_assets: float | None
-  cash_and_equivalents: float | None
-  accounts_receivable: float | None
-  inventories: float | None
-  non_current_assets: float | None
-  property_plant_equipment: float | None  # PP&E (net)
-  intangible_assets: float | None
+  total_assets, current_assets, cash_and_equivalents,
+  accounts_receivable, inventories, non_current_assets,
+  property_plant_equipment, intangible_assets
 
   # Liabilities
-  total_liabilities: float | None
-  current_liabilities: float | None
-  accounts_payable: float | None
-  short_term_debt: float | None
-  non_current_liabilities: float | None
-  long_term_debt: float | None
+  total_liabilities, current_liabilities, accounts_payable,
+  short_term_debt, non_current_liabilities, long_term_debt
 
   # Equity
-  total_equity: float | None
-  retained_earnings: float | None
+  total_equity, retained_earnings
 
-  # Derived metrics (computed by Step 4)
-  net_debt: float | None              # short_term_debt + long_term_debt - cash
-  working_capital: float | None       # current_assets - current_liabilities
-  current_ratio: float | None         # current_assets / current_liabilities
-  quick_ratio: float | None           # (current_assets - inventories) / current_liabilities
-  debt_to_ebitda: float | None        # net_debt / ebitda (requires income statement)
-  receivable_days: float | None       # (accounts_receivable / revenue) × 365
-  inventory_days: float | None        # (inventories / cogs) × 365
-  payable_days: float | None          # (accounts_payable / cogs) × 365
-  cash_conversion_cycle: float | None # receivable_days + inventory_days - payable_days
-  return_on_assets: float | None      # net_income / total_assets
-  return_on_equity: float | None      # net_income / total_equity
-  asset_turnover: float | None        # revenue / total_assets
+  # Derived metrics (Step 4)
+  net_debt, working_capital, current_ratio, quick_ratio,
+  debt_to_ebitda, receivable_days, inventory_days, payable_days,
+  cash_conversion_cycle, return_on_assets, return_on_equity, asset_turnover
 ```
 
 #### Cash Flow Statement
 
 ```
 cash_flow:
-  company_id: str
-  period: Period
-
   # Operating
-  operating_cash_flow: float | None
-  depreciation_amortization: float | None  # D&A (may differ from income statement)
-  working_capital_change: float | None
-  other_operating: float | None
+  operating_cash_flow, depreciation_amortization,
+  working_capital_change, other_operating
 
   # Investing
-  investing_cash_flow: float | None
-  capex: float | None                 # Capital expenditures (negative = spending)
-  acquisitions: float | None
-  other_investing: float | None
+  investing_cash_flow, capex, acquisitions, other_investing
 
   # Financing
-  financing_cash_flow: float | None
-  debt_issuance: float | None
-  debt_repayment: float | None
-  dividends_paid: float | None
-  equity_issuance: float | None
-  other_financing: float | None
+  financing_cash_flow, debt_issuance, debt_repayment,
+  dividends_paid, equity_issuance, other_financing
 
-  # Derived metrics (computed by Step 4)
-  free_cash_flow: float | None        # operating_cash_flow + capex
-  ocf_to_net_income: float | None     # operating_cash_flow / net_income
-  capex_to_revenue: float | None      # |capex| / revenue
-  capex_to_depreciation: float | None # |capex| / D&A
+  # Derived (Step 4)
+  free_cash_flow, ocf_to_net_income, capex_to_revenue, capex_to_depreciation
+```
+
+#### Value Added Statement (DVA — CVM-specific)
+
+```
+dva:
+  revenues, inputs_acquired, gross_value_added, net_value_added,
+  distribution_employees, distribution_government,
+  distribution_lenders, distribution_shareholders
+```
+
+#### Changes in Equity (DMPL) & Comprehensive Income (DRA)
+
+```
+dmpl: net_income, dividends, oci, equity_movements
+dra: net_income, oci_components (FX, hedge, actuarial), comprehensive_income_ratio
 ```
 
 ### 3.3 The Adapter Contract
 
-Every source adapter must produce a `CompanyFinancials` object:
+Every source adapter produces a `CompanyFinancials` object containing company
+metadata, income statements, balance sheets, cash flows, and supplementary
+statements (DVA, DMPL, DRA where available). The analysis engine receives this
+object and doesn't care how it was produced.
 
-```python
-@dataclass
-class CompanyFinancials:
-    """The output of any source adapter. This is the input to the analysis engine."""
+### 3.4 Account Mapping
 
-    company: Company
-    income_statements: list[IncomeStatement]       # sorted by period date
-    balance_sheets: list[BalanceSheet] | None       # None if source doesn't provide
-    cash_flows: list[CashFlow] | None              # None if source doesn't provide
+Each adapter maps source-specific accounts to the common model:
 
-    # Metadata
-    source: str                                     # "cvm", "sec", "erp", "manual"
-    source_version: str                             # adapter version
-    extraction_date: datetime
-    period_range: tuple[date, date]                 # earliest to latest period
-    granularity: list[str]                          # ["annual", "quarterly"]
-    data_completeness: dict                         # which statements/fields are populated
-```
-
-The analysis engine receives `CompanyFinancials` and doesn't care how it was produced.
-
-### 3.4 Account Mapping Rules
-
-Each adapter maps source-specific accounts to the common model. Examples:
-
-**CVM Adapter mapping:**
-```
-CD_CONTA "3.01"  → revenue
-CD_CONTA "3.02"  → cost_of_goods_sold
-CD_CONTA "3.04"  → sga_expenses (or split into sub-accounts)
-CD_CONTA "3.05"  → ebit
-CD_CONTA "1"     → total_assets
-CD_CONTA "1.01"  → current_assets
-CD_CONTA "2"     → total_liabilities
-CD_CONTA "2.01"  → current_liabilities
-CD_CONTA "2.03"  → total_equity
-```
-
-**SEC EDGAR mapping (XBRL tags):**
-```
-us-gaap:Revenue                    → revenue
-us-gaap:CostOfGoodsSold            → cost_of_goods_sold
-us-gaap:SellingGeneralAndAdmin      → sga_expenses
-us-gaap:OperatingIncomeLoss         → ebit
-us-gaap:Assets                      → total_assets
-us-gaap:Liabilities                 → total_liabilities
-us-gaap:StockholdersEquity          → total_equity
-```
-
-**SAP FI/CO mapping (configurable per client):**
-```
-GL accounts 4000-4999              → revenue
-GL accounts 5000-5999              → cost_of_goods_sold
-GL accounts 6000-6999              → sga_expenses
-Cost elements by category          → more granular COGS decomposition
-```
-
-The SAP adapter is inherently configurable because every company's chart of accounts
-is different. The adapter includes a **field mapping UI** where the consultant (you)
-configures which GL accounts map to which common model fields.
+| Source | Revenue | COGS | Total Assets | Total Equity |
+|--------|---------|------|--------------|--------------|
+| CVM | CD_CONTA 3.01 | CD_CONTA 3.02 | CD_CONTA 1 | CD_CONTA 2.03 |
+| SEC EDGAR | us-gaap:Revenue | us-gaap:CostOfGoodsSold | us-gaap:Assets | us-gaap:StockholdersEquity |
+| SAP FI/CO | GL 4000-4999 | GL 5000-5999 | Configurable | Configurable |
 
 ---
 
-## 4. Signal Stacking Engine
+## 4. Analysis Modules (Step 6)
 
-The most important analytical capability in the product is not individual signal
-detection — it's the ability to **stack and combine signals into a diagnosis.**
-
-### Why Signal Stacking Matters
-
-A single signal (e.g., "COGS ratio increased 15pp") is an observation.
-Multiple correlated signals ("COGS increased 15pp + revenue fell while costs
-didn't + EBIT went negative + margins compressing 4.6pp/year") is a diagnosis.
-
-CFOs don't act on individual observations. They act on diagnoses. The product's
-value comes from combining signals across modules and across time periods to
-answer the four CFO questions with a unified narrative.
-
-### Current State (Partially Implemented)
-
-Step 6 already has composite signals (STRUCTURAL_COMPETITIVENESS_ISSUE,
-NEGATIVE_OPERATING_LEVERAGE) that combine findings. But these are:
-- Limited to income statement patterns (Module 1 only)
-- Rule-based (hardcoded IF/THEN combinations)
-- Not cross-module (can't combine profitability + balance sheet + cash flow signals)
-
-### Target State
-
-**Cross-module signal stacking:**
-
-When multiple modules are active, the stacking engine should detect combinations
-that no single module would catch:
-
-- **Margin compression + leverage escalation + negative FCF** = "Company is
-  deteriorating operationally AND has no financial cushion. Distress risk is HIGH."
-
-- **COGS drift + inventory build + receivable days growing** = "The company is
-  not just facing cost pressure — it's also accumulating unsold inventory and
-  having trouble collecting from customers. Working capital is absorbing cash."
-
-- **Revenue growth + margin compression + CAPEX decline** = "Revenue is growing
-  but profitability is declining and the company has stopped investing. This
-  suggests the growth is low-quality — possibly buying revenue at the expense
-  of margin."
-
-- **Margin recovery + debt repayment + positive FCF** = "Recovery signal across
-  all three dimensions. The turnaround may be real."
-
-**Signal stacking rules:**
-
-Each stacked signal is a combination rule:
-
-```python
-STACKING_RULES = [
-    {
-        "diagnosis": "FINANCIAL_DISTRESS_RISK",
-        "requires": {
-            "profitability": ["margin_compression", "cost_drift"],
-            "balance_sheet": ["leverage_escalation"],
-            "cash_flow": ["negative_fcf"],
-        },
-        "min_modules": 2,  # must have signals from at least 2 modules
-        "severity": "CRITICAL",
-        "narrative": "The company is deteriorating operationally and has no financial cushion.",
-    },
-    {
-        "diagnosis": "WORKING_CAPITAL_TRAP",
-        "requires": {
-            "profitability": ["cost_drift"],
-            "balance_sheet": ["inventory_build", "receivable_days_growing"],
-        },
-        "min_modules": 2,
-        "severity": "HIGH",
-        "narrative": "Cost pressure is compounded by working capital accumulation.",
-    },
-    {
-        "diagnosis": "LOW_QUALITY_GROWTH",
-        "requires": {
-            "profitability": ["revenue_growth", "margin_compression"],
-            "cash_flow": ["capex_decline"],
-        },
-        "min_modules": 2,
-        "severity": "HIGH",
-        "narrative": "Revenue growth is coming at the expense of profitability and investment.",
-    },
-    {
-        "diagnosis": "CONFIRMED_RECOVERY",
-        "requires": {
-            "profitability": ["margin_expansion"],
-            "balance_sheet": ["leverage_reduction"],
-            "cash_flow": ["positive_fcf"],
-        },
-        "min_modules": 2,
-        "severity": "LOW",  # positive signal
-        "narrative": "Recovery is confirmed across profitability, leverage, and cash generation.",
-    },
-]
-```
-
-**The AI agent leverages stacked signals:** When the AI Industry Specialist (Step 7)
-receives stacked signals, it produces dramatically better analysis because it can
-reason about the interactions between profitability, leverage, and cash flow —
-not just each in isolation.
-
-### Implementation Approach
-
-Signal stacking sits between the individual module detection (Step 6) and the AI
-agent (Step 7). The flow is:
-
-1. Module 1 produces profitability signals
-2. Module 2 produces balance sheet signals
-3. Module 3 produces cash flow signals
-4. Stacking engine combines cross-module signals into diagnoses
-5. AI agent receives individual signals AND stacked diagnoses
-
-This is a Phase 3 deliverable (alongside Modules 2 and 3), since stacking requires
-signals from multiple modules to be meaningful.
-
----
-
-## 5. Analysis Modules
-
-The analysis engine is organized into modules that can be enabled/disabled independently.
-
-### Module 1: Profitability Analysis (CURRENT — implemented)
+### Module 1: Profitability Analysis — IMPLEMENTED
 
 **Data required:** Income Statement
-**Patterns detected:**
-- Margin compression / expansion (Gross, EBIT, EBITDA)
-- Cost composition drift (COGS, SGA as % of revenue)
-- Revenue-cost decoupling (revenue and cost growing at different rates)
-- YoY same-period comparison
-- Statistical anomalies in margin metrics
-- Peer comparison (when multiple companies)
-- Materiality estimation (BRL impact of findings)
+**Algorithms (6):** Margin compression/expansion, cost composition drift, revenue-cost
+decoupling, YoY same-period comparison, statistical anomalies, materiality estimation
 
-### Module 2: Balance Sheet Health (PLANNED — Phase 3)
+### Module 2: Balance Sheet Health — IMPLEMENTED
 
 **Data required:** Balance Sheet + Income Statement (for cross-statement ratios)
-**Patterns to detect:**
-- Leverage escalation (debt/EBITDA trending up)
-- Working capital deterioration (receivable/inventory days growing)
-- Liquidity stress (current ratio declining, approaching 1.0)
-- Asset efficiency decline (ROA, asset turnover declining)
-- Cash conversion cycle expansion
-- Debt maturity concentration risk
-- Equity erosion (retained earnings declining)
+**Algorithms (7):** Leverage escalation, working capital deterioration, liquidity stress,
+asset efficiency decline, cash conversion cycle expansion, debt maturity risk, equity erosion
 
-**Detection thresholds (examples):**
-- Debt/EBITDA > 3.5× → flag HIGH
-- Current ratio < 1.2 → flag MEDIUM, < 1.0 → flag HIGH
-- Receivable days > 90 → flag MEDIUM, > 120 → flag HIGH
-- Working capital negative → flag HIGH
-- ROA declining > 2pp/year → flag MEDIUM
-
-### Module 3: Cash Flow Quality (PLANNED — Phase 3)
+### Module 3: Cash Flow Quality — IMPLEMENTED
 
 **Data required:** Cash Flow Statement + Income Statement
-**Patterns to detect:**
-- Earnings quality gap (OCF/Net Income ratio declining or < 0.8)
-- CAPEX starvation (CAPEX/Revenue or CAPEX/D&A declining)
-- Free cash flow erosion
-- Debt dependency (financing cash flow consistently positive = borrowing to fund operations)
-- Dividend sustainability (dividends > free cash flow)
-- Working capital cash drain (operating cash flow reduced by working capital changes)
+**Algorithms (6):** Earnings quality gap (OCF/NI ratio), CAPEX starvation,
+free cash flow erosion, debt dependency, dividend sustainability, working capital cash drain
 
-**Detection thresholds (examples):**
-- OCF/Net Income < 0.5 → flag HIGH (earnings not converting to cash)
-- CAPEX/D&A < 0.5 → flag HIGH (underinvesting relative to depreciation)
-- FCF negative for 3+ periods → flag HIGH
-- Dividends > FCF for 2+ periods → flag MEDIUM
+### Module 4: Auditor Assessment — IMPLEMENTED
 
-### Module 4: Value Distribution (FUTURE — lower priority)
+**Data required:** Parecer (auditor opinion), FRE (reference form)
+**Algorithms (3):** AUD001 (qualified opinion), AUD002 (emphasis of matter / going concern),
+AUD003 (auditor changes — flagged as weak signal)
 
-**Data required:** DVA (Value Added Statement) — CVM-specific
-**Patterns to detect:**
-- Labor cost escalation as % of value added
-- Government burden shift (tax as % of value added)
-- Capital return compression (return to shareholders declining)
+### Module 5: Equity & Value Distribution — IMPLEMENTED
+
+**Data required:** DVA, DMPL, DRA statements
+**Patterns detected:** Equity erosion, dividend sustainability vs FCF, OCI volatility,
+labor cost escalation, government burden shift, capital return compression
+
+### Signal Stacking Engine
+
+Combines findings across modules into composite diagnoses:
+- `STRUCTURAL_COMPETITIVENESS_ISSUE`: margin + cost + revenue signals
+- `NEGATIVE_OPERATING_LEVERAGE`: cost growing faster than revenue
+- `FINANCIAL_DISTRESS_RISK`: margin + leverage + negative FCF
+- `WORKING_CAPITAL_TRAP`: cost drift + inventory/receivable accumulation
+- `CONFIRMED_RECOVERY`: margin expansion + leverage reduction + positive FCF
+
+Each stacked diagnosis requires signals from at least 2 modules (`min_modules: 2`).
 
 ---
 
-## 6. Source Adapter Roadmap
+## 5. Distress Scoring Engine (v1.5)
+
+Replaces the legacy additive signal-intensity score with a layered distress score.
+
+### Three-Layer Architecture (max 100 points)
+
+**Layer 1 — Gating Facts (up to 60 pts):**
+Binary structural checks that indicate fundamental trouble.
+
+| Code | Factor | Points |
+|------|--------|--------|
+| G01 | Negative equity | 20 |
+| G02 | Going concern opinion from auditor | 15 |
+| G03 | Persistent liquidity stress (CR < 1.0 for 3+ periods) | 10 |
+| G04 | Distributing dividends while insolvent | 8 |
+| G05 | Financing dependence for payouts | 5 |
+| G06 | Technical insolvency trajectory | 2 |
+
+**Layer 2 — Fundamentals (up to 30 pts):**
+Continuous metrics measuring financial health.
+
+| Component | Max Points |
+|-----------|-----------|
+| Profitability (margin levels/trends) | 10 |
+| Cash generation (FCF, operating CF) | 8 |
+| Leverage (debt/EBITDA, debt/equity) | 6 |
+| Liquidity (current ratio, quick ratio) | 6 |
+
+**Layer 3 — Signals (capped at 10 pts):**
+Pattern detection findings from Step 6, weighted by cycle classifier.
+
+### Cycle Classifier
+
+Determines whether findings are structural deterioration or cyclical noise.
+Uses a 10pp gross margin range guardrail and 5-test classification:
+
+| Classification | Multiplier | When applied |
+|---------------|-----------|--------------|
+| Gating | 1.0 | Always full weight |
+| Structural | 1.0 | Persistence > sector cycle length |
+| Ambiguous | 0.5 | Guardrail active + short persistence, or single-period anomalies |
+| Cyclical | 0.3 | Finding near cycle peak, YoY base effects |
+
+### Six Distress Bands
+
+| Band | Score Range |
+|------|-----------|
+| Healthy | 0–19 |
+| Stable | 20–39 |
+| Watchlist | 40–59 |
+| High Risk | 60–79 |
+| Distress | 80–89 |
+| Severe Distress | 90–100 |
+
+### Band Overrides
+
+- **O1:** G01 (negative equity) + G02 (going concern) → floor at Distress minimum
+- **O2:** G01 + negative FCF + CR < 1.0 → floor at High Risk minimum
+
+### Calibration Examples
+
+| Company | Score | Band | Key Factors |
+|---------|-------|------|-------------|
+| Braskem | 100 | Severe Distress | G01+G02+G03 (60), fundamentals maxed (30), signals capped (10) |
+| Vale | 13 | Healthy | No gating facts, fundamentals 3/30, signals 10 (cyclical ×0.3) |
+| Suzano | 23 | Stable | No gating facts, moderate fundamentals |
+
+### Implementation
+
+Located in `backend/pipeline/distress/`:
+- `distress_scorer.py` — main orchestrator
+- `gating_facts.py` — 6 gating fact detectors (G01-G06)
+- `fundamentals_scorer.py` — 4 metric components (max 30)
+- `cycle_classifier.py` — 10pp guardrail + classification heuristics
+- `band_overrides.py` — O1/O2 override logic + band mapping
+- `sector_config.py` — 30 sector configurations with signal weights
+- `step6_adapter.py` — extracts inputs from pipeline data
+
+---
+
+## 6. Reasoning Engine
+
+Provides structured, deterministic reasoning over detection findings before
+they reach the LLM layer. Located in `backend/pipeline/reasoning_engine.py`,
+`evidence_chains.py`, `explanation_ranker.py`.
+
+### Knowledge Base (`backend/knowledge/`)
+
+- **15 canonical concepts** (`canonical_concepts.yaml`): Financial principles that
+  explain patterns (e.g., operating leverage, cost stickiness, margin compression)
+- **14 financial relationships** (`financial_relationships.yaml`): Cause-effect
+  links between metrics (e.g., COGS↑ → Gross Margin↓)
+- **5 explanation templates** (`explanation_templates.yaml`): Narrative patterns
+  that combine concepts and relationships into coherent explanations
+- **568 companies** (`company_sectors.yaml`): Classified into 27 sectors for
+  sector-specific analysis thresholds
+
+### Pipeline
+
+1. **Finding annotation:** Each Step 6 finding is tagged with matching canonical concepts
+2. **Evidence chains:** Relationship matching walks the knowledge graph to build
+   multi-step causal chains (e.g., revenue decline → margin compression → FCF erosion)
+3. **Explanation ranking:** Templates are scored by concept coherence, evidence
+   chain coverage, and finding count. Top-ranked explanations are injected into
+   the Step 7 cross_module LLM call as structured context.
+
+---
+
+## 7. AI Prompt Architecture (Step 7)
+
+### 5 Parallel LLM Calls
+
+Each call receives the full financial context but focuses on one domain:
+
+| Call | Focus | Key Data |
+|------|-------|----------|
+| macro_context | Macro environment, sector dynamics | Time series, sector info |
+| profitability | Margin trends, cost structure | IS metrics, bridges |
+| balance_sheet | Leverage, liquidity, working capital | BS series, ratios |
+| cash_flow | Cash generation, investment, financing | CF series, FCF |
+| cross_module | Integrated diagnosis, interactions | All findings + reasoning engine output |
+
+### Prompt Rules
+
+- **Severity authority:** Deterministic distress score sets the severity ceiling.
+  LLM cannot upgrade severity beyond what the data supports.
+- **Anti-hedging:** Banned phrases ("could potentially", "may or may not", "it remains
+  to be seen"). Every sentence must commit to a direction.
+- **Dominant stance enforcement:** Each section must declare POSITIVE, NEGATIVE, or
+  NEUTRAL in the first line. All subsequent analysis must be consistent with that stance.
+- **Evidence over sector priors:** The LLM must cite specific data points, not
+  general sector knowledge. "Petrochemical margins are cyclical" is not an acceptable
+  explanation without supporting the company's specific data.
+- **CFO lens:** Output is framed for a CFO audience. Action-oriented, materiality-aware,
+  no academic hedging.
+
+---
+
+## 8. Visual Identity (v4)
+
+### Color System
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| Navy | #0b1f3a | Product canvas, deep backgrounds, derived metrics in charts |
+| Financial Blue | #2E86C1 | Chart data series (revenue, primary metrics) |
+| Cost Red | rgba(192,57,43,0.65) | Chart cost/liability series (COGS, payables) |
+| Cygnus Teal | #0e8f9a | UI chrome (sidebar, active states, healthy gauge band) |
+| Amber | #EF9F27 | Watchlist gauge band, warning states |
+| Off-white | #f5f7fa | Content backgrounds |
+| Charcoal | #2b2b2b | High-contrast text |
+
+### Typography
+
+| Font | Weights | Usage |
+|------|---------|-------|
+| IBM Plex Sans | 400/500/600/700 | All UI text: headings, labels, buttons, body |
+| IBM Plex Mono | 400/600/700 | Data values, chart axes, finding codes, monospace |
+
+### Chart Components (Frontend — Recharts)
+
+- `RevenueCOGSGrowth` — Revenue vs COGS bars with Gross Profit line
+- `MarginTrajectory` — Dual Y-axis: margins (left) + COGS/Revenue (right)
+- `WaterfallChart` — Reusable bridge/waterfall (margin, equity, cashflow, DVA)
+- `WorkingCapitalChart` — Two-panel: net WC line (top) + component decomposition (bottom)
+- `CashConversionCycleChart` — Two-panel: CCC line (top) + component lines (bottom)
+- `RiskGauge` — Semi-circle gauge with 6-band gradient + needle
+- `DataFunnel` — Step 2 data quality visualization
+- `MacroTimeline` — Macro context timeline
+- `FindingChart` — Individual finding visualization
+
+### Chart Export Pipeline
+
+High-res PNG export via Playwright screenshots of the actual Recharts components
+at 3× device scale. The frontend includes a hidden `?export=charts` route
+(`ExportCharts.jsx`) that renders charts with cached data. `capture.mjs` uses
+headless Chromium to screenshot each chart by DOM id. Output is pixel-identical
+to the browser rendering.
+
+---
+
+## 9. CVM Adapter (Current Implementation)
+
+### Data Sources Downloaded
+
+| File Type | Content | Parsed By |
+|-----------|---------|-----------|
+| DFP (Annual) | Income Statement, Balance Sheet | `metrics_calculator.py` |
+| ITR (Quarterly) | Income Statement, Balance Sheet | `metrics_calculator.py` |
+| FRE (Reference Form) | Auditor profiles, debt maturity/currency, foreign bonds | `fre_parser.py` |
+| Parecer | Auditor opinions | `parecer_classifier.py` |
+| DFC | Cash Flow Statement | `metrics_calculator.py` |
+| DVA | Value Added Statement | `dva_parser.py` |
+| DMPL | Changes in Equity | `dmpl_parser.py` |
+| DRA | Comprehensive Income | `dra_parser.py` |
+
+### Company Name Matching
+
+Uses exact-match-first pattern across all parsers to prevent sibling companies
+from contaminating each other's data (e.g., "PETROLEO" matching both
+PETROLEO BRASILEIRO and REFINARIA DE PETROLEOS MANGUINHOS, or "SUZANO"
+matching both SUZANO S.A. and SUZANO HOLDING S.A.).
+
+### Data Coverage
+
+- **Years:** 2020–2025 (configurable in `config.py`)
+- **Companies:** 568 classified into 27 sectors
+- **Historical data available:** CVM portal has filings back to at least 2010
+
+---
+
+## 10. Source Adapter Roadmap
 
 **Build principle: adapters are built when data exists, not speculatively.**
-The CVM adapter exists because CVM data is public and available now. The SEC adapter
-will be built when there's a reason to analyze US companies. The ERP adapter will be
-built when a client hands over data. No adapter should be built ahead of demand.
 
-### Adapter 1: CVM (CURRENT — implemented)
+### Adapter 1: CVM — IMPLEMENTED
 
-**Status:** Complete (Phase 1 + Phase 2)
-**Data available:** Income Statement (DRE), Cash Flow (DFC for D&A), Balance Sheet (BPA/BPP)
-**Currently mapped:** Income Statement + D&A only
-**Phase 3 will add:** Full Balance Sheet + Full Cash Flow mapping
+**Status:** Complete. Full IS, BS, CF, DVA, DMPL, DRA, FRE, Parecer parsing.
+Multi-company support with exact-match company name resolution.
 
-### Adapter 2: SEC EDGAR (FUTURE — build when targeting US market)
+### Adapter 2: SEC EDGAR — FUTURE
 
-**Status:** Not started — build only when English-language publishing creates demand
-**Data available:** Income Statement, Balance Sheet, Cash Flow (all via XBRL)
-**Format:** XBRL (structured XML) — well-defined taxonomy (US GAAP)
-**Challenges:**
-- XBRL tag inconsistency across companies (extended taxonomy elements)
-- Fiscal year end varies by company (not always Dec 31)
-- Need to handle both 10-K (annual) and 10-Q (quarterly)
-- Currency always USD
-**Estimated effort:** 1-2 weeks for a working adapter
-**Strategic value:** Opens US market, makes English-language content more relevant
-**Build trigger:** When LinkedIn content generates inbound interest from US/UK markets
+**Status:** Not started — build when targeting US market
+**Format:** XBRL (US GAAP taxonomy)
+**Build trigger:** When English-language publishing creates inbound US/UK interest
 
-### Adapter 3: ERP Extract (FUTURE — build when first client provides data)
+### Adapter 3: ERP Extract — FUTURE
 
-**Status:** Not started — build only when a client engagement requires it
-**Data available:** Everything — trial balance, sub-ledger, cost centers, profit centers
-**Format:** CSV/Excel exports from SAP, Oracle, NetSuite, etc.
-**Challenges:**
-- Every company's chart of accounts is different
-- Requires a field mapping configuration step
-- Data may be monthly (more granular than public filings)
-- May include segment-level or product-level breakdowns
-- Currency may vary by entity
-**Estimated effort:** 2-3 weeks for configurable adapter + mapping UI
-**Strategic value:** This is where consulting revenue lives — the adapter configuration
-IS the Data Readiness Assessment engagement
-**Build trigger:** When a client says "here's our SAP export, can you analyze this?"
+**Status:** Not started — build when first client provides data
+**Format:** CSV/Excel from SAP, Oracle, NetSuite
+**Strategic value:** The adapter configuration IS the Data Readiness Assessment engagement
 
-### Adapter 4: Manual Upload (FUTURE — build for self-service prospects)
+### Adapter 4: Manual Upload — FUTURE
 
 **Status:** Not started
-**Data available:** Whatever the user uploads
-**Format:** CSV or Excel with user-defined column mapping
-**Challenges:**
-- Completely unstructured — need a column mapping UI
-- Data quality unpredictable
-- May have mixed currencies, mixed periods, missing fields
-**Estimated effort:** 1-2 weeks for upload + mapping UI
-**Strategic value:** Low-friction entry point for prospects who want to try the tool
-**Build trigger:** When there's a self-service product motion (post-consulting validation)
+**Build trigger:** When self-service prospect needs arise
 
 ---
 
-## 7. How Analysis Modules Use the Common Model
+## 11. Tech Stack
 
-Each analysis module declares what it needs:
-
-```python
-MODULE_REQUIREMENTS = {
-    "profitability": {
-        "required": ["income_statement"],
-        "optional": [],
-        "min_periods": 4,
-    },
-    "balance_sheet_health": {
-        "required": ["balance_sheet"],
-        "optional": ["income_statement"],  # for cross-statement ratios
-        "min_periods": 4,
-    },
-    "cash_flow_quality": {
-        "required": ["cash_flow"],
-        "optional": ["income_statement"],  # for OCF/NI ratio
-        "min_periods": 4,
-    },
-}
-```
-
-When the analysis engine runs (Step 6), it checks which modules can fire based on
-data availability:
-
-```python
-def determine_active_modules(company_financials: CompanyFinancials) -> list[str]:
-    active = []
-    for module, reqs in MODULE_REQUIREMENTS.items():
-        has_required = all(
-            getattr(company_financials, stmt) is not None
-            and len(getattr(company_financials, stmt)) >= reqs["min_periods"]
-            for stmt in reqs["required"]
-        )
-        if has_required:
-            active.append(module)
-    return active
-```
-
-The UI shows which modules are active and which are disabled (with a message like
-"Balance Sheet analysis requires BPA data — not available from current source").
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python 3.14, FastAPI, uvicorn |
+| Frontend | React 18, Vite, Recharts |
+| AI | Claude API (streaming over WebSocket) |
+| Charts (PDF) | matplotlib + reportlab (SVG→Drawing pipeline) |
+| Charts (Export) | Playwright headless Chromium screenshots |
+| Fonts | IBM Plex Sans + IBM Plex Mono (Google Fonts) |
+| Styling | CSS Modules, CSS custom properties |
+| i18n | EN + PT-BR (frontend JSON + backend status strings) |
+| Cache | JSON file cache per company per step, language-keyed for LLM steps |
 
 ---
 
-## 8. Impact on Current Codebase
-
-### What changes now (foundation)
-- Define the common model as Python dataclasses in a new `backend/models/` directory
-- Refactor the CVM adapter to output `CompanyFinancials` instead of raw DataFrames
-- Refactor Steps 4-6 to read from `CompanyFinancials` instead of CVM-specific column names
-
-### What changes for Phase 3 (CVM Balance Sheet + Cash Flow)
-- Extend CVM adapter to map BPA/BPP accounts to Balance Sheet model
-- Extend CVM adapter to map full DFC accounts to Cash Flow model
-- Build Module 2 (Balance Sheet Health) detection algorithms
-- Build Module 3 (Cash Flow Quality) detection algorithms
-- Update Step 6 to run active modules based on data availability
-- Update AI agent prompts to reason about balance sheet and cash flow findings
-
-### What changes for Phase 4 (ERP adapter)
-- Build the ERP adapter with configurable field mapping
-- Build the field mapping UI (a configuration step before the 9-step pipeline)
-- The analysis engine (Steps 4-9) requires NO changes — it already works on the common model
-
-### What changes for Phase 5 (SEC adapter)
-- Build the SEC EDGAR adapter with XBRL parsing
-- Map US GAAP tags to the common model
-- Handle USD currency and non-December fiscal year ends
-- The analysis engine requires NO changes
-
----
-
-## 9. Migration Path
-
-The current codebase uses CVM-specific DataFrames with column names like
-`DENOM_CIA`, `CD_CONTA`, `DT_REFER`, `Receita de Venda de Bens e/ou Serviços`.
-
-The migration to the common model should be gradual:
-
-**Phase 3a (refactor):** Introduce the common model dataclasses. Update the CVM adapter
-(Steps 1-3) to output `CompanyFinancials`. Update Steps 4-6 to read from the common
-model fields instead of CVM column names. This is a refactor, not a feature — the
-output should be identical.
-
-**Phase 3b (balance sheet + cash flow):** With the common model in place, add BPA/BPP
-and full DFC mapping to the CVM adapter. Build Modules 2 and 3.
-
-**Phase 4+:** New adapters plug into the same common model. No analysis engine changes.
-
----
-
-## 10. The Decision Support Layer (Future — Layer 4)
-
-The current product reaches Layer 3 (Patterns → Hypotheses). The ultimate product
-vision extends to Layer 4 (Hypotheses → Decisions). This section outlines what
-Layer 4 would look like — not for immediate development, but as the north star.
-
-### What Layer 4 Delivers
-
-For each hypothesis generated by the AI agent, Layer 4 would provide:
-
-**Decision framework:**
-- If hypothesis H1 is confirmed → recommended actions A, B, C
-- If hypothesis H2 is confirmed → recommended actions D, E, F
-- Expected economic impact of each action
-- Implementation complexity and timeline estimate
-
-**Investigation plan:**
-- Specific data requests to confirm/refute each hypothesis
-- Who in the organization owns that data
-- What format the data should be in
-- Expected timeline to obtain and analyze
-
-**Risk assessment:**
-- What happens if no action is taken (status quo trajectory)
-- What are the risks of each recommended action
-- What are the second-order effects
-
-**Monitoring framework:**
-- After action is taken, what metrics should be tracked
-- What thresholds trigger escalation
-- How frequently should the analysis be re-run
-
-### Why This Is the Consulting Engagement
-
-Layer 4 cannot be fully automated. It requires:
-- Understanding of the company's strategic context
-- Knowledge of organizational politics and constraints
-- Judgment about implementation feasibility
-- Accountability for recommendations
-
-This is where the human expert (the consultant) adds irreplaceable value. The product
-delivers Layers 1-3 efficiently. The consultant delivers Layer 4. The product makes
-the consultant 10x more effective by doing the pattern detection and hypothesis
-generation in minutes rather than weeks.
-
-**The business model:** The product is the lead generation engine and the efficiency
-multiplier. The consulting engagement is the revenue engine. They reinforce each other.
-
----
-
-## 11. Non-Goals (For Now)
-
-- **Multi-company comparison across sources** (e.g., Braskem CVM vs. Dow SEC) — interesting
-  but complex due to currency, accounting standards, fiscal year differences
-- **Real-time data** — all sources are periodic (quarterly/annual). Real-time market data
-  is a different product
-- **Automated remediation** — the tool identifies problems and generates hypotheses.
-  The remediation is the consulting engagement (Layer 4)
-- **Replacing FP&A tools** — the product complements, not competes with, budgeting and
-  forecasting tools. It answers "why did actual deviate from plan?" not "what should the plan be?"
-- **Selling to data teams** — the buyer is the CFO or VP Finance, not the BI team.
-  The product must speak financial language, not data language
-- **Building adapters ahead of demand** — the ERP adapter, SEC adapter, and manual upload
-  adapter are architecturally designed but will only be built when a concrete need exists
-  (a client provides data, or a market demands it). No speculative adapter development.
-
----
-
-## 12. Product Name
-
-**Name:** Cygnus
-
-**Tagline:** Revealing Hidden Value in Financial Data
-
-**Why Cygnus:**
-- A constellation — pattern recognition in the sky, parallel to pattern recognition
-  in financial data
-- Works identically in Portuguese and English
-- Short, distinctive, professional — doesn't sound like another BI tool or consulting firm
-- Cygnus X-1 is one of the strongest X-ray sources in the sky and the first widely
-  accepted black hole — a hidden, powerful force revealed by the right instruments.
-  The product reveals hidden value leakage with the right analytical instruments.
-- Does not need explanation in a business context — it's a name, not an acronym
-
-**Usage:**
-- Product: "Cygnus" or "Cygnus Financial"
-- Full formal: "Cygnus — Decision Intelligence for CFOs"
-- In conversation: "I ran a Cygnus analysis on your CVM data"
-- Tagline for marketing: "Revealing Hidden Value in Financial Data"
-
----
-
-## 13. Design System
-
-The visual identity serves the product's core message: hidden patterns revealed by the
-right instruments. Every design decision reinforces this — the dark canvas suggests depth
-and what's hidden beneath the surface, the blue accent marks where signals emerge, and
-the typography separates three distinct voices: authority, operations, and data.
-
-### 13.1 Logomark: The Accretion Disk
-
-The Cygnus mark is an accretion disk — concentric elliptical rings converging on a bright
-core, representing Cygnus X-1's matter spiraling inward until the hidden force at the
-center becomes undeniable.
-
-**Construction:**
-- Three concentric ellipses with decreasing size and increasing opacity (0.12 → 0.22 → 0.38)
-- A solid blue core circle with a navy-colored inner void (the "black hole")
-- The opacity gradient communicates intensity: data converges, signal strengthens toward center
-
-**Metaphor:** Financial data is scattered and faint at the edges. As the analysis converges,
-the pattern intensifies until the finding — the core — becomes the brightest element. The
-void at the center represents what was hidden; the bright ring around it is the moment of
-detection.
-
-**Variants:**
-- **On dark (primary):** Blue (#1e90ff) rings and core on navy (#0b1f3a) — used in the
-  product UI, demo app navigation, dark headers
-- **On light:** Navy (#0b1f3a) rings and core on white/off-white — used in documents,
-  slides, light contexts
-- **Mark only (no wordmark):** Standalone accretion disk for favicons, app icons, loading
-  states, inline references. Designed to be recognizable at 16px
-- **Favicon:** Optimized version with thicker strokes and fewer rings for small rendering,
-  on navy rounded-square background
-
-**Scaling rules:** At smaller sizes, stroke widths increase and the outermost ring is
-dropped. The core circle grows proportionally to maintain the "bright center" effect.
-At 16px the mark is two rings and a dot — still recognizable as converging-to-center.
-
-**Files:** `cygnus-logo-dark.svg`, `cygnus-logo-light.svg`, `cygnus-mark.svg`,
-`cygnus-favicon.svg`
-
-### 13.2 Color System
-
-Five colors, each with a defined role. The same palette is shared across the consultant
-brand, the product, and the content layer — what shifts is which color leads.
+## 12. Pipeline Data Flow
 
 ```
-Navy       #0b1f3a  — Product canvas, deep backgrounds, consultant primary
-Signal Blue  #1e90ff  — Accent, interactive elements, findings, the logomark core
-Slate      #4a5568  — Body text, secondary information, muted labels
-Off-white  #f5f7fa  — Content backgrounds, cards, light surfaces
-Charcoal   #2b2b2b  — High-contrast text, headlines on light backgrounds
+Step 1 (Download)
+  └─ CVM ZIP files → data/raw/
+
+Step 2 (Quality Filters)
+  └─ Dedup, encoding, company matching → clean data
+
+Step 3 (Transformation)
+  └─ Parse IS, BS, CF, DVA, DMPL, DRA, FRE, Parecer
+  └─ Map to Common Financial Data Model
+
+Step 4 (Financial Metrics)
+  └─ Compute margins, ratios, bridges, period changes
+  └─ LLM chart interpretations (language-keyed cache)
+  └─ Output: time_series, balance_sheet_series, cash_flow_series,
+             dva_series, dmpl_series, dra_series, bridges
+
+Step 5 (Quality Scan)
+  └─ Data range validation, anomaly detection
+  └─ Auditor assessment
+  └─ Confidence scoring
+
+Step 6 (Core Analysis)
+  └─ 5 detection modules → raw findings
+  └─ Signal stacker → composite diagnoses
+  └─ Reasoning engine → evidence chains, ranked explanations
+  └─ Distress scorer → 0-100 score, 6-band classification
+  └─ Output: findings, stacked_diagnoses, risk_score, risk_level, distress{}
+
+Step 7 (AI Industry Specialist)
+  └─ 5 parallel Claude calls (streaming via WebSocket)
+  └─ Reasoning engine output injected into cross_module
+  └─ Language-keyed cache (step7_en.json / step7_pt-br.json)
+
+Step 8 (Executive Summary)
+  └─ Claude narrative synthesis (streaming)
+  └─ Language-keyed cache (step8_en.json / step8_pt-br.json)
+
+Step 9 (Q&A)
+  └─ Open conversation via WebSocket
+  └─ Full pipeline context available to Claude
 ```
-
-**CSS custom properties (use in all frontend code):**
-```css
-:root {
-  --navy: #0b1f3a;
-  --gray: #4a5568;
-  --blue: #1e90ff;
-  --offwhite: #f5f7fa;
-  --charcoal: #2b2b2b;
-  --blue-dim: rgba(30, 144, 255, 0.08);
-  --blue-line: rgba(30, 144, 255, 0.25);
-}
-```
-
-**Color emphasis by surface:**
-
-| Token | Cygnus product | Consultant site | Content (Substack/LinkedIn) |
-|---|---|---|---|
-| Primary background | Navy (dark canvas) | Off-white (light, editorial) | White (clean reading) |
-| Accent | Blue (dominant, active) | Blue (sparse, highlights) | Blue (dividers, tags) |
-| Headlines | DM Sans 500, white | DM Serif Display, navy | DM Serif Display, navy |
-| Data/labels | JetBrains Mono (heavy use) | JetBrains Mono (rare) | JetBrains Mono (inline) |
-
-### 13.3 Typography
-
-Three font families, each serving a distinct voice in the product:
-
-**DM Serif Display — The authority voice**
-- Used for: Executive summary narrative (Step 8), article titles, consultant-facing
-  headlines, marketing materials
-- NOT used in: Product UI navigation, step titles, buttons, metric displays
-- The human speaking. Signals domain expertise and editorial credibility
-- When Cygnus generates an executive summary, the serif font distinguishes "here is the
-  interpretation" from "here are the metrics" — a visual cue that this is Layer 3-4 content
-
-**DM Sans (400/500/600) — The product voice**
-- Used for: All product UI headings, step titles, navigation, buttons, body text,
-  dialog labels, form elements
-- The machine speaking. Clean, operational, no personality. When you see DM Sans in
-  Cygnus, the system is talking
-- Weight 500 for headings and emphasis, 400 for body text, 600 for buttons and CTAs
-
-**JetBrains Mono — The data voice**
-- Used for: Finding codes (COGS_DRIFT), metric values (75%→92%), risk scores
-  (SEVERITY:HIGH), section labels, step numbers, account codes, period references,
-  confidence scores, data availability tags
-- Signals technical precision. A user seeing monospace in Cygnus knows they're looking
-  at a data point, not an interpretation
-- In articles and content: used inline for specific data references, creating a visual
-  link between the content and the product
-
-**Font loading (Google Fonts):**
-```html
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1
-  &family=DM+Sans:wght@300;400;500;600
-  &family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-```
-
-### 13.4 UI Component Patterns
-
-These patterns apply to the Cygnus product UI (the React frontend):
-
-**App shell:** Navy (#0b1f3a) background for navigation bar and sidebar. The analysis
-content area stays light (off-white or white) for readability. This creates a clear
-visual hierarchy: the chrome is dark (structure), the content is light (data).
-
-**Cards and panels:** Off-white (#f5f7fa) background, 1px border at rgba(11,31,58,0.07),
-6px border-radius. On hover: border shifts to rgba(30,144,255,0.25) with subtle
-box-shadow at rgba(30,144,255,0.06). Cards are the primary container for findings,
-metrics, and analysis results.
-
-**Finding cards (Step 6):** Each finding card uses the standard card pattern plus:
-- A monospace tag in the top-left showing the finding code (e.g., `COGS_DRIFT`)
-  in blue on blue-dim background
-- Severity indicated by left border color: blue for informational, amber for medium,
-  red for high/critical (extend the palette with #EF9F27 and #E24B4A for these states)
-
-**Section labels:** JetBrains Mono, 10-11px, uppercase, letter-spacing 0.12-0.15em,
-Signal Blue color. Used above every major section to orient the user within the
-9-step pipeline. These are the "you are here" markers.
-
-**Metric displays:** Large numbers in DM Sans 500, supporting context in DM Sans 400
-at smaller size, labels in JetBrains Mono. Blue left-border accent on stat blocks
-(2px solid at 30% opacity).
-
-**Interactive elements:** Buttons use DM Sans 500/600. Primary actions get blue
-background with white text. Secondary actions get blue text with blue-line border.
-Hover states use blue-dim background.
-
-**Charts and visualizations:** Chart lines and fills use the blue ramp at varying
-opacities. Grid lines at rgba(11,31,58,0.06). Axis labels in JetBrains Mono 11px.
-Annotations (breakeven lines, trend labels) in JetBrains Mono with blue or gray color.
-
-### 13.5 Step-Specific Design Notes
-
-**Steps 1-3 (Source Adapters):** Minimal UI. Progress indicators, data preview tables.
-Monospace for account codes and field names. The visual message: "the data is loading
-and being prepared." No editorial voice here.
-
-**Steps 4-5 (Metrics + Quality):** Charts and tables dominate. Dual y-axis charts for
-margin trajectory. DM Sans for labels, JetBrains Mono for values. Blue for primary
-metrics, gray for secondary. The visual message: "here are the numbers."
-
-**Step 6 (Detection):** Finding cards with severity-colored left borders. Risk gauge
-(SVG arc). Show/hide chart toggles per finding. The visual message: "here's what the
-system found — in data language."
-
-**Step 7 (AI Agent):** WebSocket streaming text in DM Sans. Hypothesis cards. This is
-where the product's AI voice speaks. Charts generated by the AI render inline via the
-JSON:chart protocol. The visual message: "here's what the analysis means — transitioning
-from data language to financial language."
-
-**Step 8 (Executive Summary):** The ONLY place DM Serif Display appears in the product UI.
-The summary uses the story arc structure (What Happened → How Serious → When Things
-Turned → What Comes Next → What We Can't Answer). Key findings table with monospace
-codes. The visual message: "here is the human-readable narrative — this is what you
-present to the CFO."
-
-**Step 9 (Q&A):** Chat interface. User messages right-aligned, AI responses left-aligned.
-Suggested question chips in blue-dim with blue text. Conversation history preserved.
-Mixed-media AI responses (text + charts). The visual message: "ask anything — the
-analysis continues."
-
-### 13.6 Brand Relationship
-
-Cygnus exists within a three-brand architecture:
-
-```
-Ricardo Uemura Advisory     →  The consultant (who)
-  ↓ publishes
-Articles / Substack         →  The authority engine (why trust me)
-  ↓ demonstrates
-Cygnus                      →  The product (what I built)
-```
-
-**When they appear together:** The consultant brand uses "powered by Cygnus" or
-"built with Cygnus" — never "Cygnus by Ricardo Uemura" (the product has its own
-identity). In demo presentations, the Cygnus logo appears in the app; Ricardo's
-name appears in the talk track and the follow-up conversation. The product earns
-credibility through the consultant, and the consultant earns leverage through the
-product.
-
-**In content:** Articles are authored by Ricardo Uemura, not by Cygnus. The product
-is referenced as a tool used in the analysis: "I ran a Cygnus analysis on Braskem's
-CVM filings." This keeps the human at the center and the product as the instrument —
-consistent with the augmentation-over-automation principle.
-
-**Brand kit reference file:** `cygnus-brand-kit.html` — full visual reference with
-all logo variants, color swatches, type specimens, scaling examples, and usage
-do/don't guidelines.

@@ -1,5 +1,6 @@
-import { useReducer, createContext, useContext, useEffect } from 'react'
+import { useReducer, createContext, useContext, useEffect, lazy, Suspense } from 'react'
 import StepWizard from './components/StepWizard'
+const ExportCharts = lazy(() => import('./ExportCharts'))
 import en from './i18n/en.json'
 import ptBr from './i18n/pt-br.json'
 
@@ -83,15 +84,26 @@ export function useAppDispatch() {
 // App root
 // ---------------------------------------------------------------------------
 export default function App() {
+  if (window.location.search.includes('export=charts')) {
+    return <Suspense fallback={<div>Loading…</div>}><ExportCharts /></Suspense>
+  }
+
   const [state, dispatch] = useReducer(appReducer, initialState)
 
-  // Sync company name from backend config on mount
+  // Sync config from backend on mount so UI labels and step data stay in the
+  // same language (backend is the source of truth across reloads).
   useEffect(() => {
     fetch('/api/config')
       .then((r) => r.json())
       .then((cfg) => {
         if (cfg.company_name && cfg.company_name !== state.companyName) {
           dispatch({ type: 'SET_COMPANY', companyName: cfg.company_name })
+        }
+        if (cfg.language && cfg.language !== state.language) {
+          dispatch({ type: 'TOGGLE_LANGUAGE' })
+        }
+        if (typeof cfg.cache_mode === 'boolean' && cfg.cache_mode !== state.cacheMode) {
+          dispatch({ type: 'TOGGLE_CACHE' })
         }
       })
       .catch(() => {})
